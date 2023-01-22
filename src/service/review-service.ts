@@ -1,27 +1,27 @@
 import { DocumentClient, ScanInput } from 'aws-sdk/clients/dynamodb'
 import { v4 as uuidv4 } from 'uuid'
 import {
-    CategoryCreateParams,
-    CategoryDeleteParams,
-    CategoryPutParams,
-    CategoryEntity,
-    CategoryGetParams
+    ReviewCreateParams,
+    ReviewDeleteParams,
+    ReviewPutParams,
+    ReviewEntity,
+    ReviewGetParams
 } from "./types";
 
-interface ProfileServiceProps{
+interface ReviewServiceProps{
     table: string
 }
 
-export class CategoryService {
+export class ReviewService {
 
-    private props: ProfileServiceProps
+    private props: ReviewServiceProps
     private documentClient = new DocumentClient()
 
-    public constructor(props: ProfileServiceProps){
+    public constructor(props: ReviewServiceProps){
         this.props = props
     }
 
-    async list(userId: string): Promise<CategoryEntity[]> {
+    async list(userId: string): Promise<ReviewEntity[]> {
         const response = await this.documentClient
             .scan({
                 TableName: this.props.table,
@@ -31,12 +31,12 @@ export class CategoryService {
                 },
             }).promise()
         if (response.Items === undefined) {
-            return [] as CategoryEntity[]
+            return [] as ReviewEntity[]
         }
-        return response.Items as CategoryEntity[]
+        return response.Items as ReviewEntity[]
     }
 
-    async get(params: CategoryGetParams): Promise<CategoryEntity> {
+    async get(params: ReviewGetParams): Promise<ReviewEntity> {
         const response = await this.documentClient
             .get({
                 TableName: this.props.table,
@@ -44,10 +44,10 @@ export class CategoryService {
                     name: params.name,
                 },
             }).promise()
-        return response.Item as CategoryEntity
+        return response.Item as ReviewEntity
     }
 
-    async put(params: CategoryPutParams): Promise<CategoryEntity> {
+    async put(params: ReviewPutParams): Promise<ReviewEntity> {
         const response = await this.documentClient
             .put({
                 TableName: this.props.table,
@@ -56,7 +56,7 @@ export class CategoryService {
         return params
     }
 
-    async delete(params: CategoryDeleteParams) {
+    async delete(params: ReviewDeleteParams) {
         const response = await this.documentClient
             .delete({
                 TableName: this.props.table,

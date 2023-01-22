@@ -2,7 +2,7 @@ import {Construct} from "constructs";
 import {GenericDynamoTable} from "../generic/GenericDynamoTable";
 import {GenericApi} from "../generic/GenericApi";
 import {NodejsFunction} from "aws-cdk-lib/aws-lambda-nodejs";
-import {putCategorySchema} from "./category-schema";
+import {putReviewSchema, postReviewSchema} from "./review-schema";
 import {CognitoUserPoolsAuthorizer, IResource} from "aws-cdk-lib/aws-apigateway";
 import {AuthorizationType} from "@aws-cdk/aws-apigateway";
 import config from "../../config/config";
@@ -20,16 +20,19 @@ export interface AuthorizerProps {
     userPoolArn: string
 }
 
-export interface CategoryApiProps {
+export interface ReviewApiProps {
     table: Table
     authorizer: CognitoUserPoolsAuthorizer
     rootResource: IResource
     idResource: IResource
 }
 
-export class CategoryApis extends GenericApi {
+export class ReviewApis extends GenericApi {
     private listApi: NodejsFunction
+    private getApi: NodejsFunction
+    private postApi: NodejsFunction
     private putApi: NodejsFunction
+    private deleteApi: NodejsFunction
 
     public constructor(scope: Construct, id: string, props: ApiProps) {
         super(scope, id)
@@ -53,8 +56,8 @@ export class CategoryApis extends GenericApi {
             userPoolArn: config.userPoolArn
         })
 
-        const idResource = this.api.root.addResource('{categoryId}')
-        this.initializeCategoryApis({
+        const idResource = this.api.root.addResource('{reviewId}')
+        this.initializeReviewApis({
             authorizer: authorizer,
             idResource: idResource,
             rootResource: this.api.root,
@@ -63,10 +66,10 @@ export class CategoryApis extends GenericApi {
 
     }
 
-    private initializeCategoryApis(props: CategoryApiProps){
+    private initializeReviewApis(props: ReviewApiProps){
         this.listApi = this.addMethod({
-            functionName: 'category-list',
-            handlerName: 'category-list-handler.ts',
+            functionName: 'review-list',
+            handlerName: 'review-list-handler.ts',
             verb: 'GET',
             resource: props.rootResource,
             environment: {
@@ -77,22 +80,65 @@ export class CategoryApis extends GenericApi {
             authorizer: props.authorizer
         })
 
+        this.getApi = this.addMethod({
+            functionName: 'review-get',
+            handlerName: 'review-get-handler.ts',
+            verb: 'GET',
+            resource: props.idResource,
+            environment: {
+                TABLE: props.table.tableName
+            },
+            validateRequestBody: false,
+            authorizationType: AuthorizationType.COGNITO,
+            authorizer: props.authorizer
+        })
+
+        this.postApi = this.addMethod({
+            functionName: 'review-post',
+            handlerName: 'review-post-handler.ts',
+            verb: 'POST',
+            resource: props.rootResource,
+            environment: {
+                TABLE: props.table.tableName
+            },
+            validateRequestBody: true,
+            bodySchema: postReviewSchema,
+            authorizationType: AuthorizationType.COGNITO,
+            authorizer: props.authorizer
+        })
+
         this.putApi = this.addMethod({
-            functionName: 'category-put',
-            handlerName: 'category-put-handler.ts',
+            functionName: 'review-put',
+            handlerName: 'review-put-handler.ts',
             verb: 'PUT',
             resource: props.rootResource,
             environment: {
                 TABLE: props.table.tableName
             },
             validateRequestBody: true,
-            bodySchema: putCategorySchema,
+            bodySchema: putReviewSchema,
+            authorizationType: AuthorizationType.COGNITO,
+            authorizer: props.authorizer
+        })
+
+        this.deleteApi = this.addMethod({
+            functionName: 'review-delete',
+            handlerName: 'review-delete-handler.ts',
+            verb: 'DELETE',
+            resource: props.idResource,
+            environment: {
+                TABLE: props.table.tableName
+            },
+            validateRequestBody: false,
             authorizationType: AuthorizationType.COGNITO,
             authorizer: props.authorizer
         })
 
         props.table.grantFullAccess(this.listApi.grantPrincipal)
+        props.table.grantFullAccess(this.getApi.grantPrincipal)
+        props.table.grantFullAccess(this.postApi.grantPrincipal)
         props.table.grantFullAccess(this.putApi.grantPrincipal)
+        props.table.grantFullAccess(this.deleteApi.grantPrincipal)
     }
 
     protected createAuthorizer(props: AuthorizerProps): CognitoUserPoolsAuthorizer{

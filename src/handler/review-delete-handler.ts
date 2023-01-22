@@ -5,11 +5,11 @@ import {
 } from 'aws-lambda';
 import {getEventBody, getSub} from "../lib/utils";
 import {Env} from "../lib/env";
-import {CategoryService} from "../service/category-service";
-import {CategoryPutParams} from "../service/types";
+import {ReviewService} from "../service/review-service";
+import {ReviewPutParams} from "../service/types";
 
 const table = Env.get('TABLE')
-const service = new CategoryService({
+const service = new ReviewService({
     table: table
 })
 
@@ -26,7 +26,7 @@ export async function handler(event: APIGatewayProxyEvent, context: Context):
         body: 'Hello From Todo Edit Api!'
     }
     try {
-        const item = getEventBody(event) as CategoryPutParams;
+        const item = getEventBody(event) as ReviewPutParams;
         const sub = getSub(event)
         item.userId = sub
         const res = await service.put(item)

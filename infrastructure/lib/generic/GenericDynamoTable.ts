@@ -11,6 +11,7 @@ export interface GenericTableProps {
     stream?: StreamViewType
     sortKeyName?: string
     sortKeyType?: AttributeType
+    removalPolicy?: RemovalPolicy
 }
 
 export interface SecondaryIndexProp {
@@ -31,7 +32,7 @@ export class GenericDynamoTable extends Construct {
         this.props = props
 
         this.table = new Table(this, id, {
-            removalPolicy: RemovalPolicy.DESTROY,
+            removalPolicy: props.removalPolicy,
             partitionKey: {
                 name: this.props.primaryKey,
                 type: AttributeType.STRING

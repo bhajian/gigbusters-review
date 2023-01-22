@@ -1,16 +1,16 @@
-export interface CategoryGetParams {
+export interface ReviewGetParams {
     name: string
 }
-export interface CategoryEntity {
+export interface ReviewEntity {
     userId: string
     name: string
     ranking: number
 }
-export interface CategoryCreateParams {
+export interface ReviewCreateParams {
     userId: string
     name: string
     ranking: number
 }
 
-export type CategoryPutParams = CategoryEntity
-export type CategoryDeleteParams = CategoryGetParams
+export type ReviewPutParams = ReviewEntity
+export type ReviewDeleteParams = ReviewGetParams

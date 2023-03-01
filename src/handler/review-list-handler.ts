@@ -9,7 +9,7 @@ import {getSub} from "../lib/utils";
 
 const table = Env.get('TABLE')
 const service = new ReviewService({
-    table: table
+    reviewTable: table
 })
 
 export async function handler(event: APIGatewayProxyEvent, context: Context):

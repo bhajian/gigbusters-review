@@ -37,10 +37,13 @@ export class ReviewStatefulStack extends Stack {
         })
         this.dynamodbTable.addSecondaryIndexes({
             indexName: 'userIdIndex',
-            partitionKeyName: 'creatorId',
+            partitionKeyName: 'userId',
             partitionKeyType: AttributeType.STRING,
-            sortKeyName: 'averageRating',
-            sortKeyType: AttributeType.NUMBER,
+        })
+        this.dynamodbTable.addSecondaryIndexes({
+            indexName: 'reviewableIdIndex',
+            partitionKeyName: 'reviewableId',
+            partitionKeyType: AttributeType.STRING,
         })
     }
 
@@ -72,7 +75,9 @@ export class ReviewStatefulStack extends Stack {
             effect: Effect.ALLOW,
             actions: [
                 's3:PutObject',
-                's3:PutObjectAcl'
+                's3:PutObjectAcl',
+                's3:GetObject',
+                's3:DeleteObject'
             ],
             resources: [this.reviewPhotoBucket.bucketArn + '/*']
         })

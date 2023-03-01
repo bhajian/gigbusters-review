@@ -10,7 +10,7 @@ import {ReviewPutParams} from "../service/types";
 
 const table = Env.get('TABLE')
 const service = new ReviewService({
-    table: table
+    reviewTable: table
 })
 
 export async function handler(event: APIGatewayProxyEvent, context: Context):

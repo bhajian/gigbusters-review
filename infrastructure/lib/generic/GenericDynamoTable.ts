@@ -18,8 +18,8 @@ export interface SecondaryIndexProp {
     indexName: string
     partitionKeyName: string
     partitionKeyType: AttributeType
-    sortKeyName: string
-    sortKeyType: AttributeType
+    sortKeyName?: string
+    sortKeyType?: AttributeType
 }
 
 export class GenericDynamoTable extends Construct {

@@ -1,15 +1,13 @@
 import { DocumentClient, ScanInput } from 'aws-sdk/clients/dynamodb'
 import { v4 as uuidv4 } from 'uuid'
 import {
-    ReviewCreateParams,
-    ReviewDeleteParams,
-    ReviewPutParams,
+    ComplexReviewEntity,
     ReviewEntity,
-    ReviewGetParams
+    ReviewKeyParams
 } from "./types";
 
 interface ReviewServiceProps{
-    table: string
+    reviewTable: string
 }
 
 export class ReviewService {
@@ -24,7 +22,7 @@ export class ReviewService {
     async list(userId: string): Promise<ReviewEntity[]> {
         const response = await this.documentClient
             .scan({
-                TableName: this.props.table,
+                TableName: this.props.reviewTable,
                 FilterExpression: 'ranking >= :ranking',
                 ExpressionAttributeValues: {
                     ':ranking': 0
@@ -36,34 +34,43 @@ export class ReviewService {
         return response.Items as ReviewEntity[]
     }
 
-    async get(params: ReviewGetParams): Promise<ReviewEntity> {
+    async get(params: ReviewKeyParams): Promise<ReviewEntity> {
         const response = await this.documentClient
             .get({
-                TableName: this.props.table,
+                TableName: this.props.reviewTable,
                 Key: {
-                    name: params.name,
+                    id: params.id,
                 },
             }).promise()
         return response.Item as ReviewEntity
     }
 
-    async put(params: ReviewPutParams): Promise<ReviewEntity> {
+    async put(params: ReviewEntity): Promise<ReviewEntity> {
         const response = await this.documentClient
             .put({
-                TableName: this.props.table,
+                TableName: this.props.reviewTable,
                 Item: params,
             }).promise()
         return params
     }
 
-    async delete(params: ReviewDeleteParams) {
+    async delete(params: ReviewKeyParams) {
         const response = await this.documentClient
             .delete({
-                TableName: this.props.table,
+                TableName: this.props.reviewTable,
                 Key: {
-                    name: params.name,
+                    // FIX ME
                 },
             }).promise()
+    }
+
+    async putComplexReview(params: ComplexReviewEntity): Promise<ReviewEntity | null> {
+        // const response = await this.documentClient
+        //     .put({
+        //         TableName: this.props.reviewTable,
+        //         Item: params,
+        //     }).promise()
+        return null
     }
 
 }

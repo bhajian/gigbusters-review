@@ -3,19 +3,20 @@ import {
     APIGatewayProxyResult,
     APIGatewayProxyEvent
 } from 'aws-lambda';
-import {getEventBody, getSub} from "../lib/utils";
+import {getEventBody, getPathParameter, getSub} from "../lib/utils";
 import {Env} from "../lib/env";
-import {ReviewService} from "../service/review-service";
-import {ComplexReviewEntity} from "../service/review-types";
+import {ReviewableService} from "../service/reviewable-service";
+import {PhotoEntry} from "../service/reviewable-types";
 
-const reviewTable = Env.get('REVIEW_TABLE')
-const service = new ReviewService({
-    reviewTable: reviewTable
+const table = Env.get('TABLE')
+const bucket = Env.get('IMAGE_BUCKET')
+const service = new ReviewableService({
+    table: table,
+    bucket: bucket
 })
 
 export async function handler(event: APIGatewayProxyEvent, context: Context):
     Promise<APIGatewayProxyResult> {
-
     const result: APIGatewayProxyResult = {
         statusCode: 200,
         headers: {
@@ -23,14 +24,18 @@ export async function handler(event: APIGatewayProxyEvent, context: Context):
             'Access-Control-Allow-Headers': '*',
             'Access-Control-Allow-Methods': '*'
         },
-        body: 'Hello From Todo Edit Api!'
+        body: 'Empty!'
     }
     try {
-        const item = getEventBody(event) as ComplexReviewEntity;
+        const id = getPathParameter(event, 'id')
         const sub = getSub(event)
-        item.userId = sub
-        const res = await service.putComplexReview(item)
-        result.body = JSON.stringify(res)
+        const item = getEventBody(event) as PhotoEntry
+
+        const newPhoto = await service.addPhoto({
+            id: id,
+            userId: sub,
+        }, item)
+        result.body = JSON.stringify(newPhoto)
     } catch (error) {
         result.statusCode = 500
         result.body = error.message

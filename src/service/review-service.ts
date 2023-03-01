@@ -4,7 +4,7 @@ import {
     ComplexReviewEntity,
     ReviewEntity,
     ReviewKeyParams
-} from "./types";
+} from "./review-types";
 
 interface ReviewServiceProps{
     reviewTable: string

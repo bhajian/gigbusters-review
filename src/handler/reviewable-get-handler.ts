@@ -3,14 +3,15 @@ import {
     APIGatewayProxyResult,
     APIGatewayProxyEvent
 } from 'aws-lambda';
-import {getEventBody, getSub} from "../lib/utils";
 import {Env} from "../lib/env";
-import {ReviewService} from "../service/review-service";
-import {ReviewEntity} from "../service/review-types";
+import {ReviewableService} from "../service/reviewable-service";
+import {getPathParameter, getSub} from "../lib/utils";
 
 const table = Env.get('TABLE')
-const service = new ReviewService({
-    reviewTable: table
+const bucket = Env.get('IMAGE_BUCKET')
+const service = new ReviewableService({
+    table: table,
+    bucket: bucket
 })
 
 export async function handler(event: APIGatewayProxyEvent, context: Context):
@@ -23,17 +24,22 @@ export async function handler(event: APIGatewayProxyEvent, context: Context):
             'Access-Control-Allow-Headers': '*',
             'Access-Control-Allow-Methods': '*'
         },
-        body: 'Hello From Todo Edit Api!'
+        body: ''
     }
-    try {
-        const item = getEventBody(event) as ReviewEntity;
-        const sub = getSub(event)
-        item.userId = sub
-        const res = await service.put(item)
-        result.body = JSON.stringify(res)
-    } catch (error) {
+    try{
+        const userId = getSub(event)
+        const id = getPathParameter(event, 'id')
+        const item = await service.get({
+            id: id,
+            userId: userId
+        })
+
+        result.body = JSON.stringify(item)
+        return result
+    }
+    catch (e) {
         result.statusCode = 500
-        result.body = error.message
+        result.body = e.message
     }
     return result
 }

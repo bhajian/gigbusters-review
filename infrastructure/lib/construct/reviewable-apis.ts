@@ -2,18 +2,18 @@ import {Construct} from "constructs";
 import {GenericDynamoTable} from "../generic/GenericDynamoTable";
 import {GenericApi} from "../generic/GenericApi";
 import {NodejsFunction} from "aws-cdk-lib/aws-lambda-nodejs";
-import {putReviewSchema, postReviewSchema} from "./review-schema";
+import {postReviewableSchema, putReviewableSchema} from "./reviewable-schema";
 import {CognitoUserPoolsAuthorizer, IResource} from "aws-cdk-lib/aws-apigateway";
 import {AuthorizationType} from "@aws-cdk/aws-apigateway";
 import config from "../../config/config";
-import {ITable, Table} from "aws-cdk-lib/aws-dynamodb";
+import {Table} from "aws-cdk-lib/aws-dynamodb";
 import {UserPool} from "aws-cdk-lib/aws-cognito";
 import {Bucket} from "aws-cdk-lib/aws-s3";
 
 export interface ApiProps {
     reviewTable: GenericDynamoTable
     reviewableTable: GenericDynamoTable
-    reviewImageBucket: Bucket
+    reviewableImageBucket: Bucket
 }
 
 export interface AuthorizerProps {
@@ -23,39 +23,36 @@ export interface AuthorizerProps {
     userPoolArn: string
 }
 
-export interface ReviewApiProps {
-    reviewTable: Table
-    reviewableTable: Table
+export interface ReviewableApiProps {
+    table: Table
+    bucket: Bucket
     authorizer: CognitoUserPoolsAuthorizer
     rootResource: IResource
     idResource: IResource
-    complexReviewResource: IResource
 }
 
-export class ReviewApis extends GenericApi {
+export class ReviewableApis extends GenericApi {
     private listApi: NodejsFunction
     private getApi: NodejsFunction
     private postApi: NodejsFunction
-    private postComplexApi: NodejsFunction
     private putApi: NodejsFunction
     private deleteApi: NodejsFunction
 
     public constructor(scope: Construct, id: string, props: ApiProps) {
         super(scope, id)
-
-        this.initializeApis(props.reviewTable.table, props.reviewableTable.table)
+        this.initializeApis(props);
         this.initializeDomainName({
             certificateArn: config.apiDomainCertificateArn,
             apiSubdomain: config.apiSubdomain,
             domainNameId: 'domainNameId',
             rootDomain: config.rootDomain,
             ARecordId: 'ARecordId',
-            basePath: config.reviewApiBasePath,
+            basePath: config.reviewableApiBasePath,
             envName: config.envName
         })
     }
 
-    private initializeApis(reviewTable: Table, reviewableTable: Table){
+    private initializeApis(props: ApiProps){
         const authorizer = this.createAuthorizer({
             id: 'userAuthorizerId',
             authorizerName: 'userAuthorizer',
@@ -63,27 +60,26 @@ export class ReviewApis extends GenericApi {
             userPoolArn: config.userPoolArn
         })
 
-        const idResource = this.api.root.addResource('{reviewId}')
-        const complexReviewResource = this.api.root.addResource('complexReview')
-
-        this.initializeReviewApis({
+        const idResource = this.api.root.addResource('{id}')
+        this.initializeReviewableApis({
             authorizer: authorizer,
             idResource: idResource,
             rootResource: this.api.root,
-            reviewTable: reviewTable,
-            reviewableTable: reviewableTable,
-            complexReviewResource: complexReviewResource
+            table: props.reviewableTable.table,
+            bucket: props.reviewableImageBucket
         })
+
     }
 
-    private initializeReviewApis(props: ReviewApiProps){
+    private initializeReviewableApis(props: ReviewableApiProps){
         this.listApi = this.addMethod({
-            functionName: 'review-list',
-            handlerName: 'review-list-handler.ts',
+            functionName: 'reviewable-list',
+            handlerName: 'reviewable-list-handler.ts',
             verb: 'GET',
             resource: props.rootResource,
             environment: {
-                TABLE: props.reviewTable.tableName,
+                TABLE: props.table.tableName,
+                IMAGE_BUCKET: props.bucket.bucketName
             },
             validateRequestBody: false,
             authorizationType: AuthorizationType.COGNITO,
@@ -91,12 +87,13 @@ export class ReviewApis extends GenericApi {
         })
 
         this.getApi = this.addMethod({
-            functionName: 'review-get',
-            handlerName: 'review-get-handler.ts',
+            functionName: 'reviewable-get',
+            handlerName: 'reviewable-get-handler.ts',
             verb: 'GET',
             resource: props.idResource,
             environment: {
-                TABLE: props.reviewTable.tableName
+                TABLE: props.table.tableName,
+                IMAGE_BUCKET: props.bucket.bucketName
             },
             validateRequestBody: false,
             authorizationType: AuthorizationType.COGNITO,
@@ -104,68 +101,54 @@ export class ReviewApis extends GenericApi {
         })
 
         this.postApi = this.addMethod({
-            functionName: 'review-post',
-            handlerName: 'review-post-handler.ts',
+            functionName: 'reviewable-post',
+            handlerName: 'reviewable-post-handler.ts',
             verb: 'POST',
             resource: props.rootResource,
             environment: {
-                TABLE: props.reviewTable.tableName
+                TABLE: props.table.tableName,
+                IMAGE_BUCKET: props.bucket.bucketName
             },
             validateRequestBody: true,
-            bodySchema: postReviewSchema,
-            authorizationType: AuthorizationType.COGNITO,
-            authorizer: props.authorizer
-        })
-
-        this.postComplexApi = this.addMethod({
-            functionName: 'review-post-complex',
-            handlerName: 'review-post-complex-handler.ts',
-            verb: 'POST',
-            resource: props.complexReviewResource,
-            environment: {
-                REVIEW_TABLE: props.reviewTable.tableName,
-                REVIEWABLE_TABLE: props.reviewableTable.tableName
-            },
-            validateRequestBody: true,
-            bodySchema: postReviewSchema,
+            bodySchema: postReviewableSchema,
             authorizationType: AuthorizationType.COGNITO,
             authorizer: props.authorizer
         })
 
         this.putApi = this.addMethod({
-            functionName: 'review-put',
-            handlerName: 'review-put-handler.ts',
+            functionName: 'reviewable-put',
+            handlerName: 'reviewable-put-handler.ts',
             verb: 'PUT',
             resource: props.rootResource,
             environment: {
-                TABLE: props.reviewTable.tableName
+                TABLE: props.table.tableName,
+                IMAGE_BUCKET: props.bucket.bucketName
             },
             validateRequestBody: true,
-            bodySchema: putReviewSchema,
+            bodySchema: putReviewableSchema,
             authorizationType: AuthorizationType.COGNITO,
             authorizer: props.authorizer
         })
 
         this.deleteApi = this.addMethod({
-            functionName: 'review-delete',
-            handlerName: 'review-delete-handler.ts',
+            functionName: 'reviewable-delete',
+            handlerName: 'reviewable-delete-handler.ts',
             verb: 'DELETE',
             resource: props.idResource,
             environment: {
-                TABLE: props.reviewTable.tableName
+                TABLE: props.table.tableName,
+                IMAGE_BUCKET: props.bucket.bucketName
             },
             validateRequestBody: false,
             authorizationType: AuthorizationType.COGNITO,
             authorizer: props.authorizer
         })
 
-        props.reviewTable.grantFullAccess(this.listApi.grantPrincipal)
-        props.reviewTable.grantFullAccess(this.getApi.grantPrincipal)
-        props.reviewTable.grantFullAccess(this.postApi.grantPrincipal)
-        props.reviewTable.grantFullAccess(this.putApi.grantPrincipal)
-        props.reviewTable.grantFullAccess(this.deleteApi.grantPrincipal)
-        props.reviewTable.grantFullAccess(this.postComplexApi.grantPrincipal)
-        props.reviewableTable.grantFullAccess(this.postComplexApi.grantPrincipal)
+        props.table.grantFullAccess(this.listApi.grantPrincipal)
+        props.table.grantFullAccess(this.getApi.grantPrincipal)
+        props.table.grantFullAccess(this.postApi.grantPrincipal)
+        props.table.grantFullAccess(this.putApi.grantPrincipal)
+        props.table.grantFullAccess(this.deleteApi.grantPrincipal)
     }
 
     protected createAuthorizer(props: AuthorizerProps): CognitoUserPoolsAuthorizer{

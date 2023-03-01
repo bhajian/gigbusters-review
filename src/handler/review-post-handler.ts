@@ -6,7 +6,7 @@ import {
 import {getEventBody, getSub} from "../lib/utils";
 import {Env} from "../lib/env";
 import {ReviewService} from "../service/review-service";
-import {ReviewPutParams} from "../service/types";
+import {ReviewEntity} from "../service/review-types";
 
 const table = Env.get('TABLE')
 const service = new ReviewService({
@@ -26,7 +26,7 @@ export async function handler(event: APIGatewayProxyEvent, context: Context):
         body: 'Hello From Todo Edit Api!'
     }
     try {
-        const item = getEventBody(event) as ReviewPutParams;
+        const item = getEventBody(event) as ReviewEntity;
         const sub = getSub(event)
         item.userId = sub
         const res = await service.put(item)

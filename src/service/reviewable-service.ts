@@ -52,7 +52,6 @@ export class ReviewableService {
                 TableName: this.props.table,
                 Item: params,
             }).promise()
-        console.log(response)
         return params
     }
 
@@ -62,7 +61,6 @@ export class ReviewableService {
                 TableName: this.props.table,
                 Item: params,
             }).promise()
-        console.log(response)
         return params
     }
 

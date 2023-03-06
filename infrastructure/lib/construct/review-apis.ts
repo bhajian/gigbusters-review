@@ -112,7 +112,7 @@ export class ReviewApis extends GenericApi {
                 TABLE: props.reviewTable.tableName
             },
             validateRequestBody: true,
-            bodySchema: postReviewSchema,
+            // bodySchema: postReviewSchema,
             authorizationType: AuthorizationType.COGNITO,
             authorizer: props.authorizer
         })
@@ -127,7 +127,7 @@ export class ReviewApis extends GenericApi {
                 REVIEWABLE_TABLE: props.reviewableTable.tableName
             },
             validateRequestBody: true,
-            bodySchema: postReviewSchema,
+            // bodySchema: postReviewSchema,
             authorizationType: AuthorizationType.COGNITO,
             authorizer: props.authorizer
         })
@@ -141,7 +141,7 @@ export class ReviewApis extends GenericApi {
                 TABLE: props.reviewTable.tableName
             },
             validateRequestBody: true,
-            bodySchema: putReviewSchema,
+            // bodySchema: putReviewSchema,
             authorizationType: AuthorizationType.COGNITO,
             authorizer: props.authorizer
         })

@@ -8,6 +8,7 @@ import {
 
 interface ReviewServiceProps{
     reviewTable: string
+    reviewableTable: string
 }
 
 export class ReviewService {
@@ -59,18 +60,73 @@ export class ReviewService {
             .delete({
                 TableName: this.props.reviewTable,
                 Key: {
-                    // FIX ME
+                    id: params.id,
                 },
             }).promise()
     }
 
-    async putComplexReview(params: ComplexReviewEntity): Promise<ReviewEntity | null> {
-        // const response = await this.documentClient
-        //     .put({
-        //         TableName: this.props.reviewTable,
-        //         Item: params,
-        //     }).promise()
-        return null
+    async putComplexReview(params: ComplexReviewEntity): Promise<any> {
+        const reviewableParam = params.reviewable
+        reviewableParam.userId = params.userId
+        delete params.reviewable
+        console.log(reviewableParam)
+        console.log(params)
+
+        let reviewableRes = await this.documentClient
+            .query({
+                TableName: this.props.reviewableTable,
+                IndexName: 'uriIndex',
+                KeyConditionExpression: 'uri = :uri',
+                ExpressionAttributeValues : {':uri' : reviewableParam.uri}
+            }).promise()
+        let reviewable = ((reviewableRes && reviewableRes.Items?
+            reviewableRes.Items[0] : undefined))
+        console.log(reviewable)
+        if(reviewable){
+            console.log('reviewable')
+            console.log(reviewable)
+            const response = await this.documentClient
+                .update({
+                    TableName: this.props.reviewableTable,
+                    Key: {
+                        id: reviewable.id,
+                    },
+                    ConditionExpression: 'uri = :uri',
+                    UpdateExpression: 'set cumulativeRate = (cumulativeRate*numberOfReviews + :rating)/ (numberOfReviews + 1), ' +
+                        ' numberOfReviews=numberOfReviews + 1',
+                    ExpressionAttributeValues : {
+                        ':uri' : reviewable.uri,
+                        ':rating': params.rating
+                    }
+                }).promise()
+        } else {
+            console.log('new')
+            reviewableParam.id = uuidv4()
+            reviewableParam.numberOfReviews = 1
+            reviewableParam.cumulativeRate = params.rating
+            reviewableRes = await this.documentClient
+                .put({
+                    TableName: this.props.reviewableTable,
+                    Item: reviewableParam,
+                }).promise()
+            reviewable = reviewableParam
+            console.log(reviewable)
+        }
+
+        const review = {
+            id: uuidv4(),
+            ...params,
+            reviewableId: (reviewable ? reviewable.id : undefined)
+        }
+
+        const reviewResponse = await this.documentClient
+            .put({
+                TableName: this.props.reviewTable,
+                Item: review,
+            }).promise()
+
+        console.log(review)
+        return reviewResponse
     }
 
 }

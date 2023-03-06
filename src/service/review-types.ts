@@ -5,7 +5,7 @@ export interface ReviewKeyParams {
 }
 export interface ReviewEntity {
     id: string
-    reviewableId: string
+    reviewableId?: string
     userId: string
     review: string
     rating: number
@@ -15,7 +15,7 @@ export interface ReviewEntity {
 }
 
 export interface ComplexReviewEntity {
-    id: string
+    // id: string
     reviewable: ReviewableEntity
     userId: string
     review: string

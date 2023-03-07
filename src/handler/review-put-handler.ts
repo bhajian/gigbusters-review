@@ -8,9 +8,11 @@ import {Env} from "../lib/env";
 import {ReviewService} from "../service/review-service";
 import {ReviewEntity} from "../service/review-types";
 
-const table = Env.get('TABLE')
+const reviewTable = Env.get('REVIEW_TABLE')
+const reviewableTable = Env.get('REVIEWABLE_TABLE')
 const service = new ReviewService({
-    reviewTable: table
+    reviewTable: reviewTable,
+    reviewableTable: reviewableTable
 })
 
 export async function handler(event: APIGatewayProxyEvent, context: Context):

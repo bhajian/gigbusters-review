@@ -5,7 +5,7 @@ import {
 } from 'aws-lambda';
 import {Env} from "../lib/env";
 import {ReviewService} from "../service/review-service";
-import {getSub} from "../lib/utils";
+import {getQueryString, getSub} from "../lib/utils";
 
 const reviewTable = Env.get('REVIEW_TABLE')
 const reviewableTable = Env.get('REVIEWABLE_TABLE')
@@ -28,7 +28,11 @@ export async function handler(event: APIGatewayProxyEvent, context: Context):
     }
     try{
         const userId = getSub(event)
-        const item = await service.list(userId)
+        const reviewableId = getQueryString(event, 'reviewableId')
+        const item = await service.query({
+            reviewableId: reviewableId,
+            userId: userId
+        })
 
         result.body = JSON.stringify(item)
         return result

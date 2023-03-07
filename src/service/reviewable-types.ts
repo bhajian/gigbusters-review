@@ -25,4 +25,5 @@ export interface ReviewableEntity {
     photos: [PhotoEntry]
     location: LocationEntry
     categories: string[]
+    reviews?: string[]
 }

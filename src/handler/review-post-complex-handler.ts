@@ -6,7 +6,7 @@ import {
 import {getEventBody, getSub} from "../lib/utils";
 import {Env} from "../lib/env";
 import {ReviewService} from "../service/review-service";
-import {ComplexReviewEntity} from "../service/review-types";
+import {ReviewEntity} from "../service/review-types";
 
 const reviewTable = Env.get('REVIEW_TABLE')
 const reviewableTable = Env.get('REVIEWABLE_TABLE')
@@ -28,7 +28,7 @@ export async function handler(event: APIGatewayProxyEvent, context: Context):
         body: 'Hello From Todo Edit Api!'
     }
     try {
-        const item = getEventBody(event) as ComplexReviewEntity;
+        const item = getEventBody(event) as ReviewEntity;
         const sub = getSub(event)
         item.userId = sub
         const res = await service.putComplexReview(item)

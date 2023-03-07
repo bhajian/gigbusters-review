@@ -22,16 +22,48 @@ export class ReviewableService {
 
     async list(userId: string): Promise<ReviewableEntity[]> {
         const response = await this.documentClient
-            .query({
+            .scan({
                 TableName: this.props.table,
-                IndexName: 'userIdIndex',
-                KeyConditionExpression: 'userId = :userId',
-                ExpressionAttributeValues : {':userId' : userId}
             }).promise()
         if (response.Items === undefined) {
             return [] as ReviewableEntity[]
         }
         return response.Items as ReviewableEntity[]
+    }
+
+    async query(params: any): Promise<ReviewableEntity[]> {
+        try{
+            const {userId, uri, location, category} = params
+            if(userId){
+                const response = await this.documentClient
+                    .query({
+                        TableName: this.props.table,
+                        IndexName: 'userIdIndex',
+                        KeyConditionExpression: 'userId = :userId',
+                        ExpressionAttributeValues : {':userId' : userId}
+                    }).promise()
+                return response.Items as ReviewableEntity[]
+            }
+            if(uri){ // FIX me : what if combination of query parameters are requested
+                const response = await this.documentClient
+                    .query({
+                        TableName: this.props.table,
+                        IndexName: 'uriIndex',
+                        KeyConditionExpression: 'uri = :uri',
+                        ExpressionAttributeValues : {':uri' : uri}
+                    }).promise()
+                return response.Items as ReviewableEntity[]
+            }
+            return [] as ReviewableEntity[]
+            if(location){
+                // FIX ME
+            }
+            if(category){
+                // FIX ME
+            }
+        } catch (e) {
+            throw e
+        }
     }
 
     async get(params: ReviewableKeyParams): Promise<ReviewableEntity> {
@@ -60,6 +92,8 @@ export class ReviewableService {
             .put({
                 TableName: this.props.table,
                 Item: params,
+                ConditionExpression: 'userId = :userId',
+                ExpressionAttributeValues : {':userId' : params.userId}
             }).promise()
         return params
     }
@@ -71,6 +105,8 @@ export class ReviewableService {
                 Key: {
                     uri: params.uri,
                 },
+                ConditionExpression: 'userId = :userId',
+                ExpressionAttributeValues : {':userId' : params.userId}
             }).promise()
     }
 

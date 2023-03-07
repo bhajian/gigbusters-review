@@ -3,14 +3,16 @@ import {
     APIGatewayProxyResult,
     APIGatewayProxyEvent
 } from 'aws-lambda';
-import {getEventBody, getSub} from "../lib/utils";
+import {getEventBody, getPathParameter, getSub} from "../lib/utils";
 import {Env} from "../lib/env";
 import {ReviewService} from "../service/review-service";
 import {ReviewEntity} from "../service/review-types";
 
-const table = Env.get('TABLE')
+const reviewTable = Env.get('REVIEW_TABLE')
+const reviewableTable = Env.get('REVIEWABLE_TABLE')
 const service = new ReviewService({
-    reviewTable: table
+    reviewTable: reviewTable,
+    reviewableTable: reviewableTable
 })
 
 export async function handler(event: APIGatewayProxyEvent, context: Context):
@@ -23,14 +25,13 @@ export async function handler(event: APIGatewayProxyEvent, context: Context):
             'Access-Control-Allow-Headers': '*',
             'Access-Control-Allow-Methods': '*'
         },
-        body: 'Hello From Todo Edit Api!'
+        body: 'Hello From Api!'
     }
     try {
-        const item = getEventBody(event) as ReviewEntity;
-        const sub = getSub(event)
-        item.userId = sub
-        const res = await service.put(item)
-        result.body = JSON.stringify(res)
+        const id = getPathParameter(event, 'id')
+        const userId = getSub(event)
+        await service.delete({id, userId: userId})
+        result.body = JSON.stringify({success: true})
     } catch (error) {
         result.statusCode = 500
         result.body = error.message

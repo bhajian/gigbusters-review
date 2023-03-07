@@ -29,9 +29,11 @@ export interface ReviewableApiProps {
     authorizer: CognitoUserPoolsAuthorizer
     rootResource: IResource
     idResource: IResource
+    queryResource: IResource
 }
 
 export class ReviewableApis extends GenericApi {
+    private queryApi: NodejsFunction
     private listApi: NodejsFunction
     private getApi: NodejsFunction
     private postApi: NodejsFunction
@@ -61,12 +63,14 @@ export class ReviewableApis extends GenericApi {
         })
 
         const idResource = this.api.root.addResource('{id}')
+        const queryResource = this.api.root.addResource('query')
         this.initializeReviewableApis({
             authorizer: authorizer,
             idResource: idResource,
             rootResource: this.api.root,
             table: props.reviewableTable.table,
-            bucket: props.reviewableImageBucket
+            bucket: props.reviewableImageBucket,
+            queryResource: queryResource
         })
 
     }
@@ -77,6 +81,20 @@ export class ReviewableApis extends GenericApi {
             handlerName: 'reviewable-list-handler.ts',
             verb: 'GET',
             resource: props.rootResource,
+            environment: {
+                TABLE: props.table.tableName,
+                IMAGE_BUCKET: props.bucket.bucketName
+            },
+            validateRequestBody: false,
+            authorizationType: AuthorizationType.COGNITO,
+            authorizer: props.authorizer
+        })
+
+        this.queryApi = this.addMethod({
+            functionName: 'reviewable-query',
+            handlerName: 'reviewable-query-handler.ts',
+            verb: 'GET',
+            resource: props.queryResource,
             environment: {
                 TABLE: props.table.tableName,
                 IMAGE_BUCKET: props.bucket.bucketName
@@ -144,6 +162,7 @@ export class ReviewableApis extends GenericApi {
             authorizer: props.authorizer
         })
 
+        props.table.grantFullAccess(this.queryApi.grantPrincipal)
         props.table.grantFullAccess(this.listApi.grantPrincipal)
         props.table.grantFullAccess(this.getApi.grantPrincipal)
         props.table.grantFullAccess(this.postApi.grantPrincipal)

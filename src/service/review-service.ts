@@ -1,7 +1,6 @@
 import { DocumentClient, ScanInput } from 'aws-sdk/clients/dynamodb'
 import { v4 as uuidv4 } from 'uuid'
 import {
-    ComplexReviewEntity,
     ReviewEntity,
     ReviewKeyParams
 } from "./review-types";
@@ -22,12 +21,25 @@ export class ReviewService {
 
     async list(userId: string): Promise<ReviewEntity[]> {
         const response = await this.documentClient
-            .scan({
+            .query({
                 TableName: this.props.reviewTable,
-                FilterExpression: 'ranking >= :ranking',
-                ExpressionAttributeValues: {
-                    ':ranking': 0
-                },
+                IndexName: 'userIdIndex',
+                KeyConditionExpression: 'userId = :userId',
+                ExpressionAttributeValues : {':userId' : userId}
+            }).promise()
+        if (response.Items === undefined) {
+            return [] as ReviewEntity[]
+        }
+        return response.Items as ReviewEntity[]
+    }
+
+    async query(params: any): Promise<ReviewEntity[]> {
+        const response = await this.documentClient
+            .query({
+                TableName: this.props.reviewTable,
+                IndexName: 'reviewableIdIndex',
+                KeyConditionExpression: 'reviewableId = :reviewableId',
+                ExpressionAttributeValues : {':reviewableId' : params.reviewableId}
             }).promise()
         if (response.Items === undefined) {
             return [] as ReviewEntity[]
@@ -51,6 +63,8 @@ export class ReviewService {
             .put({
                 TableName: this.props.reviewTable,
                 Item: params,
+                ConditionExpression: 'userId = :userId',
+                ExpressionAttributeValues : {':userId' : params.userId}
             }).promise()
         return params
     }
@@ -62,71 +76,91 @@ export class ReviewService {
                 Key: {
                     id: params.id,
                 },
+                ConditionExpression: 'userId = :userId',
+                ExpressionAttributeValues : {':userId' : params.userId}
             }).promise()
     }
 
-    async putComplexReview(params: ComplexReviewEntity): Promise<any> {
-        const reviewableParam = params.reviewable
-        reviewableParam.userId = params.userId
-        delete params.reviewable
-        console.log(reviewableParam)
-        console.log(params)
+    async putComplexReview(params: ReviewEntity): Promise<ReviewEntity> {
+        try{
+            // FIX ME => put them all in dynamodb transaction
+            const now = new Date()
 
-        let reviewableRes = await this.documentClient
-            .query({
-                TableName: this.props.reviewableTable,
-                IndexName: 'uriIndex',
-                KeyConditionExpression: 'uri = :uri',
-                ExpressionAttributeValues : {':uri' : reviewableParam.uri}
-            }).promise()
-        let reviewable = ((reviewableRes && reviewableRes.Items?
-            reviewableRes.Items[0] : undefined))
-        console.log(reviewable)
-        if(reviewable){
-            console.log('reviewable')
-            console.log(reviewable)
-            const response = await this.documentClient
-                .update({
-                    TableName: this.props.reviewableTable,
-                    Key: {
-                        id: reviewable.id,
-                    },
-                    ConditionExpression: 'uri = :uri',
-                    UpdateExpression: 'set cumulativeRate = (cumulativeRate*numberOfReviews + :rating)/ (numberOfReviews + 1), ' +
-                        ' numberOfReviews=numberOfReviews + 1',
-                    ExpressionAttributeValues : {
-                        ':uri' : reviewable.uri,
-                        ':rating': params.rating
-                    }
-                }).promise()
-        } else {
-            console.log('new')
-            reviewableParam.id = uuidv4()
-            reviewableParam.numberOfReviews = 1
-            reviewableParam.cumulativeRate = params.rating
-            reviewableRes = await this.documentClient
+            // Insert the review complex object
+            const review = {
+                id: uuidv4(),
+                dateTime: now.toISOString(),
+                ...params,
+            }
+
+            await this.documentClient
                 .put({
+                    TableName: this.props.reviewTable,
+                    Item: review,
+                }).promise().catch(e => {throw e})
+
+            // Find the related reviewable by querying
+            let reviewableRes = await this.documentClient
+                .query({
                     TableName: this.props.reviewableTable,
-                    Item: reviewableParam,
+                    IndexName: 'uriIndex',
+                    KeyConditionExpression: 'uri = :uri',
+                    ExpressionAttributeValues : {':uri' : params.reviewable.uri}
+                }).promise().catch(e => {throw e})
+            let reviewable = (reviewableRes && reviewableRes.Items?
+                reviewableRes.Items[0] : undefined)
+
+            if(reviewable){
+                // Update the reviewable rating and number
+                await this.documentClient
+                    .update({
+                        TableName: this.props.reviewableTable,
+                        Key: {
+                            id: reviewable.id,
+                        },
+                        ConditionExpression: 'uri = :uri',
+                        UpdateExpression: 'set cumulativeRating = cumulativeRating + :rating, ' +
+                            'numberOfReviews=numberOfReviews+:inc, ' +
+                            'reviews=list_append(reviews, :reviewIds)',
+                        ExpressionAttributeValues : {
+                            ':uri' : reviewable.uri,
+                            ':rating': params.rating,
+                            ':inc': 1,
+                            ':reviewIds': [review.id]
+                        }
+                    }).promise()
+            } else {
+                // Create a new reviewable
+                reviewable = {
+                    ...params.reviewable,
+                    id: uuidv4(),
+                    userId: params.userId,
+                    cumulativeRating: params.rating,
+                    numberOfReviews: 1,
+                    reviews: [review.id]
+                }
+
+                await this.documentClient
+                    .put({
+                        TableName: this.props.reviewableTable,
+                        Item: reviewable,
+                    }).promise().catch(e => {throw e})
+
+                console.log(reviewable)
+            }
+
+            // update the review with the reviewableId inserted above
+            review.reviewableId = (reviewable ? reviewable.id : undefined)
+
+            await this.documentClient
+                .put({
+                    TableName: this.props.reviewTable,
+                    Item: review,
                 }).promise()
-            reviewable = reviewableParam
-            console.log(reviewable)
+            return review
+        } catch (e) {
+            throw e
         }
-
-        const review = {
-            id: uuidv4(),
-            ...params,
-            reviewableId: (reviewable ? reviewable.id : undefined)
-        }
-
-        const reviewResponse = await this.documentClient
-            .put({
-                TableName: this.props.reviewTable,
-                Item: review,
-            }).promise()
-
-        console.log(review)
-        return reviewResponse
     }
 
 }

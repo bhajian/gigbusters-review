@@ -40,6 +40,7 @@ export class ReviewableStatefulStack extends Stack {
             indexName: 'uriIndex',
             partitionKeyName: 'uri',
             partitionKeyType: AttributeType.STRING,
+            // ADD sort key for type of the reviewable
         })
         this.dynamodbTable.addSecondaryIndexes({
             indexName: 'userIdIndex',

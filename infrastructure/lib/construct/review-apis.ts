@@ -30,9 +30,11 @@ export interface ReviewApiProps {
     rootResource: IResource
     idResource: IResource
     complexReviewResource: IResource
+    queryResource: IResource
 }
 
 export class ReviewApis extends GenericApi {
+    private queryApi: NodejsFunction
     private listApi: NodejsFunction
     private getApi: NodejsFunction
     private postApi: NodejsFunction
@@ -65,6 +67,7 @@ export class ReviewApis extends GenericApi {
 
         const idResource = this.api.root.addResource('{reviewId}')
         const complexReviewResource = this.api.root.addResource('complexReview')
+        const queryResource = this.api.root.addResource('query')
 
         this.initializeReviewApis({
             authorizer: authorizer,
@@ -72,7 +75,8 @@ export class ReviewApis extends GenericApi {
             rootResource: this.api.root,
             reviewTable: reviewTable,
             reviewableTable: reviewableTable,
-            complexReviewResource: complexReviewResource
+            complexReviewResource: complexReviewResource,
+            queryResource: queryResource
         })
     }
 
@@ -83,7 +87,22 @@ export class ReviewApis extends GenericApi {
             verb: 'GET',
             resource: props.rootResource,
             environment: {
-                TABLE: props.reviewTable.tableName,
+                REVIEW_TABLE: props.reviewTable.tableName,
+                REVIEWABLE_TABLE: props.reviewableTable.tableName
+            },
+            validateRequestBody: false,
+            authorizationType: AuthorizationType.COGNITO,
+            authorizer: props.authorizer
+        })
+
+        this.queryApi = this.addMethod({
+            functionName: 'review-query',
+            handlerName: 'review-query-handler.ts',
+            verb: 'GET',
+            resource: props.queryResource,
+            environment: {
+                REVIEW_TABLE: props.reviewTable.tableName,
+                REVIEWABLE_TABLE: props.reviewableTable.tableName
             },
             validateRequestBody: false,
             authorizationType: AuthorizationType.COGNITO,
@@ -96,7 +115,8 @@ export class ReviewApis extends GenericApi {
             verb: 'GET',
             resource: props.idResource,
             environment: {
-                TABLE: props.reviewTable.tableName
+                REVIEW_TABLE: props.reviewTable.tableName,
+                REVIEWABLE_TABLE: props.reviewableTable.tableName
             },
             validateRequestBody: false,
             authorizationType: AuthorizationType.COGNITO,
@@ -109,7 +129,8 @@ export class ReviewApis extends GenericApi {
             verb: 'POST',
             resource: props.rootResource,
             environment: {
-                TABLE: props.reviewTable.tableName
+                REVIEW_TABLE: props.reviewTable.tableName,
+                REVIEWABLE_TABLE: props.reviewableTable.tableName
             },
             validateRequestBody: true,
             // bodySchema: postReviewSchema,
@@ -138,7 +159,8 @@ export class ReviewApis extends GenericApi {
             verb: 'PUT',
             resource: props.rootResource,
             environment: {
-                TABLE: props.reviewTable.tableName
+                REVIEW_TABLE: props.reviewTable.tableName,
+                REVIEWABLE_TABLE: props.reviewableTable.tableName
             },
             validateRequestBody: true,
             // bodySchema: putReviewSchema,
@@ -152,7 +174,8 @@ export class ReviewApis extends GenericApi {
             verb: 'DELETE',
             resource: props.idResource,
             environment: {
-                TABLE: props.reviewTable.tableName
+                REVIEW_TABLE: props.reviewTable.tableName,
+                REVIEWABLE_TABLE: props.reviewableTable.tableName
             },
             validateRequestBody: false,
             authorizationType: AuthorizationType.COGNITO,
@@ -165,7 +188,9 @@ export class ReviewApis extends GenericApi {
         props.reviewTable.grantFullAccess(this.putApi.grantPrincipal)
         props.reviewTable.grantFullAccess(this.deleteApi.grantPrincipal)
         props.reviewTable.grantFullAccess(this.postComplexApi.grantPrincipal)
+        props.reviewTable.grantFullAccess(this.queryApi.grantPrincipal)
         props.reviewableTable.grantFullAccess(this.postComplexApi.grantPrincipal)
+        props.reviewableTable.grantFullAccess(this.queryApi.grantPrincipal)
     }
 
     protected createAuthorizer(props: AuthorizerProps): CognitoUserPoolsAuthorizer{

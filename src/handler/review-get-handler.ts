@@ -5,11 +5,13 @@ import {
 } from 'aws-lambda';
 import {Env} from "../lib/env";
 import {ReviewService} from "../service/review-service";
-import {getSub} from "../lib/utils";
+import {getPathParameter, getSub} from "../lib/utils";
 
-const table = Env.get('TABLE')
+const reviewTable = Env.get('REVIEW_TABLE')
+const reviewableTable = Env.get('REVIEWABLE_TABLE')
 const service = new ReviewService({
-    reviewTable: table
+    reviewTable: reviewTable,
+    reviewableTable: reviewableTable
 })
 
 export async function handler(event: APIGatewayProxyEvent, context: Context):
@@ -25,9 +27,9 @@ export async function handler(event: APIGatewayProxyEvent, context: Context):
         body: ''
     }
     try{
+        const id = getPathParameter(event, 'id')
         const userId = getSub(event)
-        const item = await service.list(userId)
-
+        const item = await service.get({id, userId: userId})
         result.body = JSON.stringify(item)
         return result
     }

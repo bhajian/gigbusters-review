@@ -17,11 +17,17 @@ export interface LocationEntry {
 export interface ReviewableEntity {
     id: string
     uri: string
-    userId: string
+    createdbyUserId: string
+    profileUserId?: string
+    reviewableStatus: string
     type: string
     cumulativeRating: number
     numberOfReviews: number
-    claimedBy?: string
+    oneStarCount?: number
+    twoStarCount?: number
+    threeStarCount?: number
+    fourStarCount?: number
+    fiveStarCount?: number
     photos: [PhotoEntry]
     location: LocationEntry
     categories: string[]

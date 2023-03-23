@@ -78,6 +78,7 @@ export class ReviewableService {
     }
 
     async create(params: ReviewableEntity): Promise<ReviewableEntity> {
+        params.reviewableStatus = 'active'
         params.id = uuidv4()
         const response = await this.documentClient
             .put({
@@ -92,8 +93,8 @@ export class ReviewableService {
             .put({
                 TableName: this.props.table,
                 Item: params,
-                ConditionExpression: 'userId = :userId',
-                ExpressionAttributeValues : {':userId' : params.userId}
+                ConditionExpression: 'createdbyUserId = :createdbyUserId',
+                ExpressionAttributeValues : {':createdbyUserId' : params.createdbyUserId}
             }).promise()
         return params
     }
@@ -105,8 +106,8 @@ export class ReviewableService {
                 Key: {
                     uri: params.uri,
                 },
-                ConditionExpression: 'userId = :userId',
-                ExpressionAttributeValues : {':userId' : params.userId}
+                ConditionExpression: 'createdbyUserId = :createdbyUserId',
+                ExpressionAttributeValues : {':createdbyUserId' : params.createdbyUserId}
             }).promise()
     }
 
@@ -126,8 +127,8 @@ export class ReviewableService {
                 .put({
                     TableName: this.props.table,
                     Item: reviewable,
-                    ConditionExpression: 'userId = :userId',
-                    ExpressionAttributeValues : {':userId' : params.userId}
+                    ConditionExpression: 'createdbyUserId = :createdbyUserId',
+                    ExpressionAttributeValues : {':createdbyUserId' : params.userId}
                 }).promise()
         }
     }

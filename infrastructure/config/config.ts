@@ -13,7 +13,6 @@ interface Env {
     authenticatedRoleArn: string | undefined
     unauthenticatedRoleArn: string | undefined
     adminRoleArn: string | undefined
-    reviewableTableArn:string | undefined
 }
 
 interface AppConfig {
@@ -29,7 +28,6 @@ interface AppConfig {
     authenticatedRoleArn: string
     unauthenticatedRoleArn: string
     adminRoleArn: string
-    reviewableTableArn:string
 }
 
 const getConfig = (): Env => {
@@ -45,8 +43,7 @@ const getConfig = (): Env => {
         reviewableApiBasePath: configFile.reviewableApiBasePath,
         authenticatedRoleArn: configFile.authenticatedRoleArn,
         unauthenticatedRoleArn: configFile.unauthenticatedRoleArn,
-        adminRoleArn: configFile.adminRoleArn,
-        reviewableTableArn: configFile.reviewableTableArn
+        adminRoleArn: configFile.adminRoleArn
     }
 };
 

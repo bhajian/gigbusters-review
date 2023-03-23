@@ -120,12 +120,22 @@ export class ReviewService {
                         },
                         ConditionExpression: 'uri = :uri',
                         UpdateExpression: 'set cumulativeRating = cumulativeRating + :rating, ' +
+                            'oneStar = oneStar + :oneStarInc, ' +
+                            'twoStar = twoStar + :twoStarInc, ' +
+                            'threeStar = threeStar + :threeStarInc, ' +
+                            'fourStar = fourStar + :fourStarInc, ' +
+                            'fiveStar = fiveStar + :fiveStarInc, ' +
                             'numberOfReviews=numberOfReviews+:inc, ' +
                             'reviews=list_append(reviews, :reviewIds)',
                         ExpressionAttributeValues : {
                             ':uri' : reviewable.uri,
                             ':rating': params.rating,
                             ':inc': 1,
+                            ':oneStarInc': (params.rating === 1 ? 1 : 0),
+                            ':twoStarInc': (params.rating === 2 ? 1 : 0),
+                            ':threeStarInc': (params.rating === 3 ? 1 : 0),
+                            ':fourStarInc': (params.rating === 4 ? 1 : 0),
+                            ':fiveStarInc': (params.rating === 5 ? 1 : 0),
                             ':reviewIds': [review.id]
                         }
                     }).promise()
@@ -137,7 +147,8 @@ export class ReviewService {
                     userId: params.userId,
                     cumulativeRating: params.rating,
                     numberOfReviews: 1,
-                    reviews: [review.id]
+                    reviews: [review.id],
+                    reviewableStatus: 'active'
                 }
 
                 await this.documentClient

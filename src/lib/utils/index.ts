@@ -14,7 +14,7 @@ export function getEventHeaders(event: APIGatewayProxyEvent): any {
     return typeof event.headers == 'object' ? event.headers : JSON.parse(event.headers)
 }
 
-export function getSub(event: APIGatewayProxyEvent): string {
+export function getSub(event: APIGatewayProxyEvent): string | undefined {
     const headers = typeof event.headers == 'object' ? event.headers : JSON.parse(event.headers)
     let jwt = ''
     if(headers && headers['Authorization']){
@@ -27,7 +27,8 @@ export function getSub(event: APIGatewayProxyEvent): string {
         let decoded: any = jwt_decode(jwt)
         return decoded.sub ? decoded.sub : ''
     }
-    throw new Error('Authorization header is not empty or cannot be parsed.')
+    // throw new Error('Authorization header is empty or cannot be parsed.')
+    return undefined
 }
 
 export function  getPathParameter(event: APIGatewayProxyEvent, parameter: string): string {

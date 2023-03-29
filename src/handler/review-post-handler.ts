@@ -25,12 +25,12 @@ export async function handler(event: APIGatewayProxyEvent, context: Context):
             'Access-Control-Allow-Headers': '*',
             'Access-Control-Allow-Methods': '*'
         },
-        body: 'Hello From Todo Edit Api!'
+        body: 'Hello From the Api!'
     }
     try {
         const item = getEventBody(event) as ReviewEntity;
         const sub = getSub(event)
-        item.userId = sub
+        item.userId = (sub ? sub : item.userId)
         const res = await service.put(item)
         result.body = JSON.stringify(res)
     } catch (error) {

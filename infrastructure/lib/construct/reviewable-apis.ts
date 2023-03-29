@@ -129,8 +129,8 @@ export class ReviewableApis extends GenericApi {
             },
             validateRequestBody: true,
             bodySchema: postReviewableSchema,
-            authorizationType: AuthorizationType.COGNITO,
-            authorizer: props.authorizer
+            // authorizationType: AuthorizationType.COGNITO,
+            // authorizer: props.authorizer
         })
 
         this.putApi = this.addMethod({

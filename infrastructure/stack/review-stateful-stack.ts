@@ -41,9 +41,11 @@ export class ReviewStatefulStack extends Stack {
             partitionKeyType: AttributeType.STRING,
         })
         this.dynamodbTable.addSecondaryIndexes({
-            indexName: 'reviewableIdIndex',
-            partitionKeyName: 'reviewableId',
+            indexName: 'reviewableIndex',
+            partitionKeyName: 'uri',
             partitionKeyType: AttributeType.STRING,
+            sortKeyName: 'type',
+            sortKeyType: AttributeType.STRING,
         })
     }
 

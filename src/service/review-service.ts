@@ -37,10 +37,14 @@ export class ReviewService {
         const response = await this.documentClient
             .query({
                 TableName: this.props.reviewTable,
-                IndexName: 'reviewableIdIndex',
-                KeyConditionExpression: 'reviewableId = :reviewableId',
+                IndexName: 'reviewableIndex',
+                KeyConditionExpression: 'uri = :uri and #type = :type',
+                ExpressionAttributeNames: {
+                    '#type': 'type'
+                },
                 ExpressionAttributeValues : {
-                    ':reviewableId' : params.reviewableId
+                    ':uri' : params.uri,
+                    ':type' : params.type,
                 },
                 Limit: params.Limit,
                 ExclusiveStartKey: params.lastEvaluatedKey
@@ -94,6 +98,8 @@ export class ReviewService {
             const review = {
                 id: uuidv4(),
                 dateTime: now.toISOString(),
+                uri: params.reviewable.uri,
+                type: params.reviewable.type,
                 ...params,
             }
 
@@ -156,6 +162,7 @@ export class ReviewService {
                 reviewable = {
                     ...params.reviewable,
                     userId: params.userId,
+                    createdDateTime: now.toISOString(),
                     cumulativeRating: params.rating,
                     numberOfReviews: 1,
                     oneStar : (params.rating === 1 ? 1 : 0),
@@ -176,14 +183,6 @@ export class ReviewService {
                 console.log(reviewable)
             }
 
-            // update the review with the reviewableId inserted above
-            review.reviewableId = (reviewable ? reviewable.id : undefined)
-
-            await this.documentClient
-                .put({
-                    TableName: this.props.reviewTable,
-                    Item: review,
-                }).promise()
             return review
         } catch (e) {
             throw e

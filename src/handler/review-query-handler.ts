@@ -28,14 +28,16 @@ export async function handler(event: APIGatewayProxyEvent, context: Context):
     }
     try{
         const userId = getSub(event)
-        const reviewableId = getQueryString(event, 'reviewableId')
+        const uri = getQueryString(event, 'uri')
+        const type = getQueryString(event, 'type')
         const limit = getQueryString(event, 'limit')
         const lastEvaluatedKey = getQueryString(event, 'lastEvaluatedKey')
 
         const item = await service.query({
-            reviewableId: reviewableId,
+            uri: uri,
+            type: type,
             userId: userId,
-            limit: limit,
+            limit: (limit? limit : 50),
             lastEvaluatedKey: lastEvaluatedKey
         })
 

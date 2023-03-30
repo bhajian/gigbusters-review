@@ -35,6 +35,9 @@ export async function handler(event: APIGatewayProxyEvent, context: Context):
         const distanceParam = getQueryString(event, 'distance')
         const longitudeParam = getQueryString(event, 'longitude')
         const latitudeParam = getQueryString(event, 'latitude')
+        const limit = getQueryString(event, 'limit')
+        const lastEvaluatedKey = getQueryString(event, 'lastEvaluatedKey')
+
         const items = await service.query({
             userId: (userParam? userId : undefined), // FIX ME
             type: typeParam,
@@ -42,7 +45,9 @@ export async function handler(event: APIGatewayProxyEvent, context: Context):
             category: categoryParam,
             distance: distanceParam,
             longitude: longitudeParam,
-            latitude: latitudeParam
+            latitude: latitudeParam,
+            limit: (limit ? limit : 50),
+            lastEvaluatedKey: lastEvaluatedKey
         })
 
         result.body = JSON.stringify(items)

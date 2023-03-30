@@ -22,10 +22,12 @@ export class ReviewableService {
         this.props = props
     }
 
-    async list(): Promise<ReviewableEntity[]> {
+    async list(params: any): Promise<ReviewableEntity[]> {
         const response = await this.documentClient
             .scan({
                 TableName: this.props.table,
+                Limit: params.Limit,
+                ExclusiveStartKey: params.lastEvaluatedKey
             }).promise()
         if (response.Items === undefined) {
             return [] as ReviewableEntity[]
@@ -44,15 +46,17 @@ export class ReviewableService {
                         KeyConditionExpression: 'userId = :userId',
                         ExpressionAttributeValues : {
                             ':userId' : userId,
-                        }
+                        },
+                        Limit: params.Limit,
+                        ExclusiveStartKey: params.lastEvaluatedKey
                     }).promise()
                 return response.Items as ReviewableEntity[]
             }
             if(type){ // FIX me : what if combination of query parameters are requested
                 const response = await this.documentClient
-                    .query({
+                    .scan({
                         TableName: this.props.table,
-                        KeyConditionExpression: '#type = :type',
+                        FilterExpression: '#type = :type',
                         ExpressionAttributeNames: {
                             '#type': 'type'
                         },

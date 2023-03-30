@@ -31,6 +31,15 @@ export function getSub(event: APIGatewayProxyEvent): string | undefined {
     return undefined
 }
 
+export function b64Decode(str: string) : string {
+    return Buffer.from(str, 'base64').toString('binary')
+}
+
+export function b64Encode(str: string) : string {
+    return Buffer.from(str, 'binary').toString('base64')
+}
+
+
 export function  getPathParameter(event: APIGatewayProxyEvent, parameter: string): string {
     const value: string | undefined = event.pathParameters
         ? event['pathParameters'][parameter]

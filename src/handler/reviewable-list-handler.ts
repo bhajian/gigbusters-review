@@ -5,7 +5,7 @@ import {
 } from 'aws-lambda';
 import {Env} from "../lib/env";
 import {ReviewableService} from "../service/reviewable-service";
-import {getSub} from "../lib/utils";
+import {b64Decode, getPathParameter, getSub} from "../lib/utils";
 
 const table = Env.get('TABLE')
 const bucket = Env.get('IMAGE_BUCKET')
@@ -27,8 +27,13 @@ export async function handler(event: APIGatewayProxyEvent, context: Context):
         body: ''
     }
     try{
-        const userId = getSub(event)
-        const item = await service.list(userId)
+        const sub = getSub(event)
+
+        if(!sub){
+            throw new Error('Sub or userId is not passed through a token.')
+        }
+
+        const item = await service.list()
 
         result.body = JSON.stringify(item)
         return result

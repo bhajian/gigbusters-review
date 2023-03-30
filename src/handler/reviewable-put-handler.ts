@@ -30,7 +30,12 @@ export async function handler(event: APIGatewayProxyEvent, context: Context):
     try {
         const item = getEventBody(event) as ReviewableEntity;
         const sub = getSub(event)
-        item.createdbyUserId = sub
+
+        if(!sub){
+            throw new Error('Sub or userId is not passed through an authentication token.')
+        }
+
+        item.userId = sub
         const res = await service.put(item)
         result.body = JSON.stringify(res)
     } catch (error) {

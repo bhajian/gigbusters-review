@@ -36,7 +36,7 @@ export async function handler(event: APIGatewayProxyEvent, context: Context):
         const longitudeParam = getQueryString(event, 'longitude')
         const latitudeParam = getQueryString(event, 'latitude')
         const items = await service.query({
-            userId: (userParam? userId : undefined),
+            userId: (userParam? userId : undefined), // FIX ME
             type: typeParam,
             uri: uriParam,
             category: categoryParam,

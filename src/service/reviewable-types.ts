@@ -1,6 +1,7 @@
 export interface ReviewableKeyParams {
-    id: string
-    uri?: string
+    id?: string
+    uri: string
+    type: string
     userId: string
 }
 export interface PhotoEntry {
@@ -15,12 +16,12 @@ export interface LocationEntry {
     longitude: number
 }
 export interface ReviewableEntity {
-    id: string
     uri: string
-    createdbyUserId: string
+    type: string
+    userId: string
+    createdDateTime?: string
     profileUserId?: string
     reviewableStatus: string
-    type: string
     cumulativeRating: number
     numberOfReviews: number
     oneStarCount?: number

@@ -29,9 +29,14 @@ export async function handler(event: APIGatewayProxyEvent, context: Context):
     try{
         const userId = getSub(event)
         const reviewableId = getQueryString(event, 'reviewableId')
+        const limit = getQueryString(event, 'limit')
+        const lastEvaluatedKey = getQueryString(event, 'lastEvaluatedKey')
+
         const item = await service.query({
             reviewableId: reviewableId,
-            userId: userId
+            userId: userId,
+            limit: limit,
+            lastEvaluatedKey: lastEvaluatedKey
         })
 
         result.body = JSON.stringify(item)

@@ -33,15 +33,11 @@ export class ReviewableStatefulStack extends Stack {
                 removalPolicy: RemovalPolicy.DESTROY,
                 tableName: `Reviewable-${config.envName}-${this.suffix}`,
                 stream: StreamViewType.NEW_AND_OLD_IMAGES,
-                primaryKey: 'id',
-                keyType: AttributeType.STRING
+                primaryKey: 'uri',
+                keyType: AttributeType.STRING,
+                sortKeyName: 'type',
+                sortKeyType: AttributeType.STRING
             })
-        this.dynamodbTable.addSecondaryIndexes({
-            indexName: 'uriIndex',
-            partitionKeyName: 'uri',
-            partitionKeyType: AttributeType.STRING,
-            // ADD sort key for type of the reviewable
-        })
         this.dynamodbTable.addSecondaryIndexes({
             indexName: 'userIdIndex',
             partitionKeyName: 'userId',

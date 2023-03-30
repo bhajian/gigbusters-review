@@ -39,7 +39,11 @@ export class ReviewService {
                 TableName: this.props.reviewTable,
                 IndexName: 'reviewableIdIndex',
                 KeyConditionExpression: 'reviewableId = :reviewableId',
-                ExpressionAttributeValues : {':reviewableId' : params.reviewableId}
+                ExpressionAttributeValues : {
+                    ':reviewableId' : params.reviewableId
+                },
+                Limit: params.Limit,
+                ExclusiveStartKey: params.lastEvaluatedKey
             }).promise()
         if (response.Items === undefined) {
             return [] as ReviewEntity[]
@@ -59,7 +63,7 @@ export class ReviewService {
     }
 
     async put(params: ReviewEntity): Promise<ReviewEntity> {
-        const response = await this.documentClient
+        await this.documentClient
             .put({
                 TableName: this.props.reviewTable,
                 Item: params,
@@ -70,7 +74,7 @@ export class ReviewService {
     }
 
     async delete(params: ReviewKeyParams) {
-        const response = await this.documentClient
+        await this.documentClient
             .delete({
                 TableName: this.props.reviewTable,
                 Key: {
@@ -83,7 +87,7 @@ export class ReviewService {
 
     async putComplexReview(params: ReviewEntity): Promise<ReviewEntity> {
         try{
-            // FIX ME => put them all in dynamodb transaction
+            // FIX ME => put them all in a dynamodb transaction
             const now = new Date()
 
             // Insert the review complex object
@@ -103,9 +107,14 @@ export class ReviewService {
             let reviewableRes = await this.documentClient
                 .query({
                     TableName: this.props.reviewableTable,
-                    IndexName: 'uriIndex',
-                    KeyConditionExpression: 'uri = :uri',
-                    ExpressionAttributeValues : {':uri' : params.reviewable.uri}
+                    KeyConditionExpression: 'uri = :uri and #type = :type',
+                    ExpressionAttributeNames: {
+                        '#type': 'type'
+                    },
+                    ExpressionAttributeValues : {
+                        ':uri' : params.reviewable.uri,
+                        ':type' : params.reviewable.type,
+                    }
                 }).promise().catch(e => {throw e})
             let reviewable = (reviewableRes && reviewableRes.Items?
                 reviewableRes.Items[0] : undefined)
@@ -116,18 +125,21 @@ export class ReviewService {
                     .update({
                         TableName: this.props.reviewableTable,
                         Key: {
-                            id: reviewable.id,
+                            uri: reviewable.uri,
+                            type: reviewable.type,
                         },
                         ConditionExpression: 'uri = :uri',
-                        UpdateExpression: 'set cumulativeRating = cumulativeRating + :rating, ' +
-                            'oneStar = oneStar + :oneStarInc, ' +
-                            'twoStar = twoStar + :twoStarInc, ' +
-                            'threeStar = threeStar + :threeStarInc, ' +
-                            'fourStar = fourStar + :fourStarInc, ' +
-                            'fiveStar = fiveStar + :fiveStarInc, ' +
-                            'numberOfReviews=numberOfReviews+:inc, ' +
+                        UpdateExpression: 'set cumulativeRating = ' +
+                            'if_not_exists(cumulativeRating, :zero) + :rating, ' +
+                            'oneStar = if_not_exists(oneStar, :zero) + :oneStarInc, ' +
+                            'twoStar = if_not_exists(twoStar, :zero) + :twoStarInc, ' +
+                            'threeStar = if_not_exists(threeStar, :zero) + :threeStarInc, ' +
+                            'fourStar = if_not_exists(fourStar, :zero) + :fourStarInc, ' +
+                            'fiveStar = if_not_exists(fiveStar, :zero) + :fiveStarInc, ' +
+                            'numberOfReviews = if_not_exists(numberOfReviews, :zero) + :inc, ' +
                             'reviews=list_append(reviews, :reviewIds)',
                         ExpressionAttributeValues : {
+                            ':zero': 0,
                             ':uri' : reviewable.uri,
                             ':rating': params.rating,
                             ':inc': 1,
@@ -143,10 +155,14 @@ export class ReviewService {
                 // Create a new reviewable
                 reviewable = {
                     ...params.reviewable,
-                    id: uuidv4(),
                     userId: params.userId,
                     cumulativeRating: params.rating,
                     numberOfReviews: 1,
+                    oneStar : (params.rating === 1 ? 1 : 0),
+                    twoStar : (params.rating === 2 ? 1 : 0),
+                    threeStar : (params.rating === 3 ? 1 : 0),
+                    fourStar : (params.rating === 4 ? 1 : 0),
+                    fiveStar : (params.rating === 5 ? 1 : 0),
                     reviews: [review.id],
                     reviewableStatus: 'active'
                 }

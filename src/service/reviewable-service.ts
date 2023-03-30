@@ -5,10 +5,12 @@ import {
     ReviewableEntity,
     ReviewableKeyParams
 } from "./reviewable-types";
+import {b64Encode} from "../lib/utils";
 
 interface ReviewableServiceProps{
     table: string
     bucket: string
+    profileTable?: string
 }
 
 export class ReviewableService {
@@ -20,7 +22,7 @@ export class ReviewableService {
         this.props = props
     }
 
-    async list(userId: string): Promise<ReviewableEntity[]> {
+    async list(): Promise<ReviewableEntity[]> {
         const response = await this.documentClient
             .scan({
                 TableName: this.props.table,
@@ -33,24 +35,30 @@ export class ReviewableService {
 
     async query(params: any): Promise<ReviewableEntity[]> {
         try{
-            const {userId, uri, location, category} = params
+            const {userId, uri, location, category, type} = params
             if(userId){
                 const response = await this.documentClient
                     .query({
                         TableName: this.props.table,
                         IndexName: 'userIdIndex',
                         KeyConditionExpression: 'userId = :userId',
-                        ExpressionAttributeValues : {':userId' : userId}
+                        ExpressionAttributeValues : {
+                            ':userId' : userId,
+                        }
                     }).promise()
                 return response.Items as ReviewableEntity[]
             }
-            if(uri){ // FIX me : what if combination of query parameters are requested
+            if(type){ // FIX me : what if combination of query parameters are requested
                 const response = await this.documentClient
                     .query({
                         TableName: this.props.table,
-                        IndexName: 'uriIndex',
-                        KeyConditionExpression: 'uri = :uri',
-                        ExpressionAttributeValues : {':uri' : uri}
+                        KeyConditionExpression: '#type = :type',
+                        ExpressionAttributeNames: {
+                            '#type': 'type'
+                        },
+                        ExpressionAttributeValues : {
+                            ':type' : type,
+                        }
                     }).promise()
                 return response.Items as ReviewableEntity[]
             }
@@ -71,16 +79,18 @@ export class ReviewableService {
             .get({
                 TableName: this.props.table,
                 Key: {
-                    id: params.id,
+                    uri: params.uri,
+                    type: params.type
                 },
             }).promise()
         return response.Item as ReviewableEntity
     }
 
     async create(params: ReviewableEntity): Promise<ReviewableEntity> {
+        const now = new Date()
         params.reviewableStatus = 'active'
-        params.id = uuidv4()
-        const response = await this.documentClient
+        params.createdDateTime = now.toISOString()
+        await this.documentClient
             .put({
                 TableName: this.props.table,
                 Item: params,
@@ -93,8 +103,8 @@ export class ReviewableService {
             .put({
                 TableName: this.props.table,
                 Item: params,
-                ConditionExpression: 'createdbyUserId = :createdbyUserId',
-                ExpressionAttributeValues : {':createdbyUserId' : params.createdbyUserId}
+                ConditionExpression: 'userId = :userId',
+                ExpressionAttributeValues : {':userId' : params.userId}
             }).promise()
         return params
     }
@@ -105,9 +115,10 @@ export class ReviewableService {
                 TableName: this.props.table,
                 Key: {
                     uri: params.uri,
+                    type: params.type,
                 },
-                ConditionExpression: 'createdbyUserId = :createdbyUserId',
-                ExpressionAttributeValues : {':createdbyUserId' : params.createdbyUserId}
+                ConditionExpression: 'userId = :userId',
+                ExpressionAttributeValues : {':userId' : params.userId}
             }).promise()
     }
 
@@ -117,7 +128,8 @@ export class ReviewableService {
             .get({
                 TableName: this.props.table,
                 Key: {
-                    id: params.id,
+                    uri: params.uri,
+                    type: params.type
                 },
             }).promise()
         const reviewable = response.Item
@@ -127,10 +139,38 @@ export class ReviewableService {
                 .put({
                     TableName: this.props.table,
                     Item: reviewable,
-                    ConditionExpression: 'createdbyUserId = :createdbyUserId',
-                    ExpressionAttributeValues : {':createdbyUserId' : params.userId}
+                    ConditionExpression: 'userId = :userId',
+                    ExpressionAttributeValues : {':userId' : params.userId}
                 }).promise()
         }
+    }
+
+    async batchGetProfiles(userIds: any): Promise<any> {
+        const requestItems: any = {}
+        let profiles = new Map<string, any>()
+        if (userIds.length === 0 ){
+            return profiles
+        }
+
+        if(!this.props.profileTable){
+            throw new Error('Profile Table is not provided as an environment variable.')
+        }
+
+        requestItems[this.props.profileTable] = {
+            Keys: userIds
+        }
+        const userResponse = await this.documentClient
+            .batchGet({
+                RequestItems: requestItems
+            }).promise()
+        let rawProfiles: any = []
+        if(userResponse && userResponse.Responses && userResponse.Responses[this.props.profileTable]){
+            rawProfiles = userResponse.Responses[this.props.profileTable]
+            for(let i=0; i< rawProfiles.length; i++){
+                profiles.set(rawProfiles[i].userId, rawProfiles[i])
+            }
+        }
+        return profiles
     }
 
     async getLocation(params: ReviewableKeyParams): Promise<LocationEntry | {}> {
@@ -138,7 +178,8 @@ export class ReviewableService {
             .get({
                 TableName: this.props.table,
                 Key: {
-                    id: params.id,
+                    uri: params.uri,
+                    type: params.type
                 },
             }).promise()
         const reviewable = response.Item
@@ -153,7 +194,8 @@ export class ReviewableService {
             .get({
                 TableName: this.props.table,
                 Key: {
-                    id: params.id,
+                    uri: params.uri,
+                    type: params.type
                 },
             }).promise()
         if (response.Item === undefined ||
@@ -169,7 +211,8 @@ export class ReviewableService {
             .get({
                 TableName: this.props.table,
                 Key: {
-                    id: params.id,
+                    uri: params.uri,
+                    type: params.type
                 },
             }).promise()
         if (response.Item && response.Item.photos &&
@@ -188,14 +231,15 @@ export class ReviewableService {
         const newPhoto = {
             photoId: photoId,
             bucket: this.props.bucket,
-            key: `${params.id}/photos/${photoId}`,
+            key: `${params.type}/${params.uri}/photos/${photoId}`,
             type: photoParams.type
         }
         const response = await this.documentClient
             .get({
                 TableName: this.props.table,
                 Key: {
-                    id: params.id,
+                    uri: params.uri,
+                    type: params.type
                 },
             }).promise()
         if (response.Item && response.Item.userId === params.userId) {
@@ -223,7 +267,8 @@ export class ReviewableService {
             .get({
                 TableName: this.props.table,
                 Key: {
-                    id: params.id,
+                    uri: params.uri,
+                    type: params.type
                 },
             }).promise()
         const profile = response.Item

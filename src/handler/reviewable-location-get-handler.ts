@@ -3,7 +3,7 @@ import {
     APIGatewayProxyResult,
     APIGatewayProxyEvent
 } from 'aws-lambda';
-import {getEventBody, getPathParameter, getSub} from "../lib/utils";
+import {b64Decode, getEventBody, getPathParameter, getSub} from "../lib/utils";
 import {Env} from "../lib/env";
 import {ReviewableService} from "../service/reviewable-service";
 
@@ -27,12 +27,23 @@ export async function handler(event: APIGatewayProxyEvent, context: Context):
         body: ''
     }
     try{
-        const userId = getSub(event)
         const id = getPathParameter(event, 'id')
+        const sub = getSub(event)
+        const decodedId = b64Decode(id).split(':')
+        const type = decodedId[0]
+        const uri = decodedId[1]
+
+        if(!sub){
+            throw new Error('Sub or userId is not passed through a token.')
+        }
+
         const item = await service.getLocation({
             id: id,
-            userId: userId
+            type: type,
+            uri: uri,
+            userId: sub,
         })
+
         result.body = JSON.stringify(item)
         return result
     }

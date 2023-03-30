@@ -28,7 +28,8 @@ export interface ReviewableApiProps {
     bucket: Bucket
     authorizer: CognitoUserPoolsAuthorizer
     rootResource: IResource
-    idResource: IResource
+    typeResource: IResource
+    uriResource: IResource
     queryResource: IResource
 }
 
@@ -62,11 +63,13 @@ export class ReviewableApis extends GenericApi {
             userPoolArn: config.userPoolArn
         })
 
-        const idResource = this.api.root.addResource('{id}')
+        const typeResource = this.api.root.addResource('{type}')
+        const uriResource = typeResource.addResource('{uri}')
         const queryResource = this.api.root.addResource('query')
         this.initializeReviewableApis({
             authorizer: authorizer,
-            idResource: idResource,
+            typeResource: typeResource,
+            uriResource: uriResource,
             rootResource: this.api.root,
             table: props.reviewableTable.table,
             bucket: props.reviewableImageBucket,
@@ -108,7 +111,7 @@ export class ReviewableApis extends GenericApi {
             functionName: 'reviewable-get',
             handlerName: 'reviewable-get-handler.ts',
             verb: 'GET',
-            resource: props.idResource,
+            resource: props.uriResource,
             environment: {
                 TABLE: props.table.tableName,
                 IMAGE_BUCKET: props.bucket.bucketName
@@ -152,7 +155,7 @@ export class ReviewableApis extends GenericApi {
             functionName: 'reviewable-delete',
             handlerName: 'reviewable-delete-handler.ts',
             verb: 'DELETE',
-            resource: props.idResource,
+            resource: props.uriResource,
             environment: {
                 TABLE: props.table.tableName,
                 IMAGE_BUCKET: props.bucket.bucketName

@@ -28,6 +28,9 @@ export async function handler(event: APIGatewayProxyEvent, context: Context):
     }
     try{
         const userId = getSub(event)
+        if(!userId){
+            throw new Error('The token or userId is not passed.')
+        }
         const item = await service.list(userId)
 
         result.body = JSON.stringify(item)

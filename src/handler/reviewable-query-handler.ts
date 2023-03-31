@@ -9,9 +9,11 @@ import {getQueryString, getSub} from "../lib/utils";
 
 const table = Env.get('TABLE')
 const bucket = Env.get('IMAGE_BUCKET')
+const profileTable = Env.get('PROFILE_TABLE')
 const service = new ReviewableService({
     table: table,
-    bucket: bucket
+    bucket: bucket,
+    profileTable: profileTable,
 })
 
 export async function handler(event: APIGatewayProxyEvent, context: Context):

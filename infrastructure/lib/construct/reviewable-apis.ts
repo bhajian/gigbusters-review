@@ -6,7 +6,7 @@ import {postReviewableSchema, putReviewableSchema} from "./reviewable-schema";
 import {CognitoUserPoolsAuthorizer, IResource} from "aws-cdk-lib/aws-apigateway";
 import {AuthorizationType} from "@aws-cdk/aws-apigateway";
 import config from "../../config/config";
-import {Table} from "aws-cdk-lib/aws-dynamodb";
+import {ITable, Table} from "aws-cdk-lib/aws-dynamodb";
 import {UserPool} from "aws-cdk-lib/aws-cognito";
 import {Bucket} from "aws-cdk-lib/aws-s3";
 
@@ -79,6 +79,8 @@ export class ReviewableApis extends GenericApi {
     }
 
     private initializeReviewableApis(props: ReviewableApiProps){
+        const profileITable = this.getProfileTable()
+
         this.listApi = this.addMethod({
             functionName: 'reviewable-list',
             handlerName: 'reviewable-list-handler.ts',
@@ -100,7 +102,8 @@ export class ReviewableApis extends GenericApi {
             resource: props.queryResource,
             environment: {
                 TABLE: props.table.tableName,
-                IMAGE_BUCKET: props.bucket.bucketName
+                IMAGE_BUCKET: props.bucket.bucketName,
+                PROFILE_TABLE: profileITable.tableName,
             },
             validateRequestBody: false,
             authorizationType: AuthorizationType.COGNITO,
@@ -171,6 +174,12 @@ export class ReviewableApis extends GenericApi {
         props.table.grantFullAccess(this.postApi.grantPrincipal)
         props.table.grantFullAccess(this.putApi.grantPrincipal)
         props.table.grantFullAccess(this.deleteApi.grantPrincipal)
+
+        profileITable.grantFullAccess(this.queryApi.grantPrincipal)
+    }
+
+    public getProfileTable() : ITable {
+        return Table.fromTableArn(this, 'profileTableId', config.profileTableArn)
     }
 
     protected createAuthorizer(props: AuthorizerProps): CognitoUserPoolsAuthorizer{

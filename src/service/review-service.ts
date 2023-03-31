@@ -179,8 +179,6 @@ export class ReviewService {
                         TableName: this.props.reviewableTable,
                         Item: reviewable,
                     }).promise().catch(e => {throw e})
-
-                console.log(reviewable)
             }
 
             return review

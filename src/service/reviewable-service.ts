@@ -5,7 +5,6 @@ import {
     ReviewableEntity,
     ReviewableKeyParams
 } from "./reviewable-types";
-import {b64Encode} from "../lib/utils";
 
 interface ReviewableServiceProps{
     table: string
@@ -50,7 +49,12 @@ export class ReviewableService {
                         Limit: params.Limit,
                         ExclusiveStartKey: params.lastEvaluatedKey
                     }).promise()
-                return response.Items as ReviewableEntity[]
+                if (response.Items === undefined) {
+                    return [] as ReviewableEntity[]
+                }
+                const reviewables = response.Items
+                const complexReviewables = this.mergeReviewables(reviewables)
+                return complexReviewables
             }
             if(type){ // FIX me : what if combination of query parameters are requested
                 const response = await this.documentClient
@@ -64,7 +68,12 @@ export class ReviewableService {
                             ':type' : type,
                         }
                     }).promise()
-                return response.Items as ReviewableEntity[]
+                if (response.Items === undefined) {
+                    return [] as ReviewableEntity[]
+                }
+                const reviewables = response.Items
+                const complexReviewables = this.mergeReviewables(reviewables)
+                return complexReviewables
             }
             return [] as ReviewableEntity[]
             if(location){
@@ -76,6 +85,35 @@ export class ReviewableService {
         } catch (e) {
             throw e
         }
+    }
+
+    async mergeReviewables(reviewables: any): Promise<any[]> {
+        let userIds = []
+        let reviewablesMap = new Map<string, any>()
+        if (reviewables) {
+            for (let i = 0; i < reviewables.length; i++) {
+                const userId = reviewables[i].userId
+                if(reviewablesMap.has(userId)){
+                } else {
+                    userIds.push({userId: reviewables[i].userId})
+                    reviewablesMap.set(userId, reviewables[i])
+                }
+            }
+        }
+        const profiles = await this.batchGetProfiles(userIds)
+        const complexReviewables : any[] = []
+
+        for (let i = 0; i < reviewables.length; i++) {
+            const profile = profiles.get(reviewables[i].userId)
+            complexReviewables.push({
+                ...reviewables[i],
+                name: (profile && profile.name ? profile.name : ''),
+                location: (profile && profile.location ? profile.location : ''),
+                profilePhoto: ( profile && profile.photos ?
+                    profile.photos[0]: undefined)
+            })
+        }
+        return complexReviewables as any[]
     }
 
     async get(params: ReviewableKeyParams): Promise<ReviewableEntity> {
@@ -147,34 +185,6 @@ export class ReviewableService {
                     ExpressionAttributeValues : {':userId' : params.userId}
                 }).promise()
         }
-    }
-
-    async batchGetProfiles(userIds: any): Promise<any> {
-        const requestItems: any = {}
-        let profiles = new Map<string, any>()
-        if (userIds.length === 0 ){
-            return profiles
-        }
-
-        if(!this.props.profileTable){
-            throw new Error('Profile Table is not provided as an environment variable.')
-        }
-
-        requestItems[this.props.profileTable] = {
-            Keys: userIds
-        }
-        const userResponse = await this.documentClient
-            .batchGet({
-                RequestItems: requestItems
-            }).promise()
-        let rawProfiles: any = []
-        if(userResponse && userResponse.Responses && userResponse.Responses[this.props.profileTable]){
-            rawProfiles = userResponse.Responses[this.props.profileTable]
-            for(let i=0; i< rawProfiles.length; i++){
-                profiles.set(rawProfiles[i].userId, rawProfiles[i])
-            }
-        }
-        return profiles
     }
 
     async getLocation(params: ReviewableKeyParams): Promise<LocationEntry | {}> {
@@ -288,6 +298,34 @@ export class ReviewableService {
                     ExpressionAttributeValues : {':userId' : params.userId}
                 }).promise()
         }
+    }
+
+    async batchGetProfiles(userIds: any): Promise<any> {
+        const requestItems: any = {}
+        let profiles = new Map<string, any>()
+        if (userIds.length === 0 ){
+            return profiles
+        }
+
+        if(!this.props.profileTable){
+            throw new Error('Profile Table is not provided as an environment variable.')
+        }
+
+        requestItems[this.props.profileTable] = {
+            Keys: userIds
+        }
+        const userResponse = await this.documentClient
+            .batchGet({
+                RequestItems: requestItems
+            }).promise()
+        let rawProfiles: any = []
+        if(userResponse && userResponse.Responses && userResponse.Responses[this.props.profileTable]){
+            rawProfiles = userResponse.Responses[this.props.profileTable]
+            for(let i=0; i< rawProfiles.length; i++){
+                profiles.set(rawProfiles[i].userId, rawProfiles[i])
+            }
+        }
+        return profiles
     }
 
 }

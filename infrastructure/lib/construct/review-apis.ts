@@ -29,8 +29,11 @@ export interface ReviewApiProps {
     authorizer: CognitoUserPoolsAuthorizer
     rootResource: IResource
     idResource: IResource
+    photoResource: IResource
+    photoIdResource: IResource
     complexReviewResource: IResource
     queryResource: IResource
+    reviewImageBucket: Bucket
 }
 
 export class ReviewApis extends GenericApi {
@@ -42,10 +45,15 @@ export class ReviewApis extends GenericApi {
     private putApi: NodejsFunction
     private deleteApi: NodejsFunction
 
+    private addPhotoApi: NodejsFunction
+    private deletePhotoApi: NodejsFunction
+    private listPhotosApi: NodejsFunction
+    private getPhotosApi: NodejsFunction
+
     public constructor(scope: Construct, id: string, props: ApiProps) {
         super(scope, id)
 
-        this.initializeApis(props.reviewTable.table, props.reviewableTable.table)
+        this.initializeApis(props.reviewTable.table, props.reviewableTable.table, props.reviewImageBucket)
         this.initializeDomainName({
             certificateArn: config.apiDomainCertificateArn,
             apiSubdomain: config.apiSubdomain,
@@ -57,7 +65,7 @@ export class ReviewApis extends GenericApi {
         })
     }
 
-    private initializeApis(reviewTable: Table, reviewableTable: Table){
+    private initializeApis(reviewTable: Table, reviewableTable: Table, reviewImageBucket: Bucket){
         const authorizer = this.createAuthorizer({
             id: 'userAuthorizerId',
             authorizerName: 'userAuthorizer',
@@ -68,6 +76,8 @@ export class ReviewApis extends GenericApi {
         const idResource = this.api.root.addResource('{reviewId}')
         const complexReviewResource = this.api.root.addResource('complexReview')
         const queryResource = this.api.root.addResource('query')
+        const photoResource = idResource.addResource('photo')
+        const photoIdResource = photoResource.addResource('{photoId}')
 
         this.initializeReviewApis({
             authorizer: authorizer,
@@ -76,7 +86,10 @@ export class ReviewApis extends GenericApi {
             reviewTable: reviewTable,
             reviewableTable: reviewableTable,
             complexReviewResource: complexReviewResource,
-            queryResource: queryResource
+            queryResource: queryResource,
+            photoResource: photoResource,
+            photoIdResource: photoIdResource,
+            reviewImageBucket: reviewImageBucket
         })
     }
 
@@ -182,6 +195,66 @@ export class ReviewApis extends GenericApi {
             authorizer: props.authorizer
         })
 
+        this.listPhotosApi = this.addMethod({
+            functionName: 'review-photo-list',
+            handlerName: 'review-photo-list-handler.ts',
+            verb: 'GET',
+            resource: props.photoResource,
+            environment: {
+                REVIEW_TABLE: props.reviewTable.tableName,
+                REVIEWABLE_TABLE: props.reviewableTable.tableName,
+                IMAGE_BUCKET: props.reviewImageBucket.bucketName
+            },
+            validateRequestBody: false,
+            authorizationType: AuthorizationType.COGNITO,
+            authorizer: props.authorizer
+        })
+
+        this.getPhotosApi = this.addMethod({
+            functionName: 'review-photo-get',
+            handlerName: 'review-photo-get-handler.ts',
+            verb: 'GET',
+            resource: props.photoIdResource,
+            environment: {
+                REVIEW_TABLE: props.reviewTable.tableName,
+                REVIEWABLE_TABLE: props.reviewableTable.tableName,
+                IMAGE_BUCKET: props.reviewImageBucket.bucketName
+            },
+            validateRequestBody: false,
+            authorizationType: AuthorizationType.COGNITO,
+            authorizer: props.authorizer
+        })
+
+        this.addPhotoApi = this.addMethod({
+            functionName: 'review-photo-add',
+            handlerName: 'review-photo-add-handler.ts',
+            verb: 'POST',
+            resource: props.photoResource,
+            environment: {
+                REVIEW_TABLE: props.reviewTable.tableName,
+                REVIEWABLE_TABLE: props.reviewableTable.tableName,
+                IMAGE_BUCKET: props.reviewImageBucket.bucketName
+            },
+            validateRequestBody: false,
+            authorizationType: AuthorizationType.COGNITO,
+            authorizer: props.authorizer
+        })
+
+        this.deletePhotoApi = this.addMethod({
+            functionName: 'review-photo-delete',
+            handlerName: 'review-photo-delete-handler.ts',
+            verb: 'DELETE',
+            resource: props.photoIdResource,
+            environment: {
+                REVIEW_TABLE: props.reviewTable.tableName,
+                REVIEWABLE_TABLE: props.reviewableTable.tableName,
+                IMAGE_BUCKET: props.reviewImageBucket.bucketName
+            },
+            validateRequestBody: false,
+            authorizationType: AuthorizationType.COGNITO,
+            authorizer: props.authorizer
+        })
+
         props.reviewTable.grantFullAccess(this.listApi.grantPrincipal)
         props.reviewTable.grantFullAccess(this.getApi.grantPrincipal)
         props.reviewTable.grantFullAccess(this.postApi.grantPrincipal)
@@ -191,6 +264,15 @@ export class ReviewApis extends GenericApi {
         props.reviewTable.grantFullAccess(this.queryApi.grantPrincipal)
         props.reviewableTable.grantFullAccess(this.postComplexApi.grantPrincipal)
         props.reviewableTable.grantFullAccess(this.queryApi.grantPrincipal)
+
+        props.reviewTable.grantFullAccess(this.addPhotoApi.grantPrincipal)
+        props.reviewableTable.grantFullAccess(this.addPhotoApi.grantPrincipal)
+        props.reviewTable.grantFullAccess(this.deletePhotoApi.grantPrincipal)
+        props.reviewableTable.grantFullAccess(this.deletePhotoApi.grantPrincipal)
+        props.reviewTable.grantFullAccess(this.listPhotosApi.grantPrincipal)
+        props.reviewableTable.grantFullAccess(this.listPhotosApi.grantPrincipal)
+        props.reviewTable.grantFullAccess(this.getPhotosApi.grantPrincipal)
+        props.reviewableTable.grantFullAccess(this.getPhotosApi.grantPrincipal)
     }
 
     protected createAuthorizer(props: AuthorizerProps): CognitoUserPoolsAuthorizer{

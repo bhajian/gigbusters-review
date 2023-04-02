@@ -9,6 +9,7 @@ export interface PhotoEntry {
     bucket?: string
     key?: string
     type?: string
+    identityId?: string
 }
 export interface LocationEntry {
     locationName: string

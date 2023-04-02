@@ -4,10 +4,12 @@ import {
     ReviewEntity,
     ReviewKeyParams
 } from "./review-types";
+import {PhotoEntry} from "./reviewable-types";
 
 interface ReviewServiceProps{
     reviewTable: string
     reviewableTable: string
+    bucket?: string
 }
 
 export class ReviewService {
@@ -143,9 +145,10 @@ export class ReviewService {
                             'fourStar = if_not_exists(fourStar, :zero) + :fourStarInc, ' +
                             'fiveStar = if_not_exists(fiveStar, :zero) + :fiveStarInc, ' +
                             'numberOfReviews = if_not_exists(numberOfReviews, :zero) + :inc, ' +
-                            'reviews=list_append(reviews, :reviewIds)',
+                            'reviews=list_append(if_not_exists(reviews, :empty_list), :reviewIds)',
                         ExpressionAttributeValues : {
                             ':zero': 0,
+                            ':empty_list': [],
                             ':uri' : reviewable.uri,
                             ':rating': params.rating,
                             ':inc': 1,
@@ -184,6 +187,96 @@ export class ReviewService {
             return review
         } catch (e) {
             throw e
+        }
+    }
+
+    async listPhotos(params: ReviewKeyParams): Promise<PhotoEntry[]> {
+        const response = await this.documentClient
+            .get({
+                TableName: this.props.reviewTable,
+                Key: {
+                    id: params.id,
+                },
+            }).promise()
+        if (response.Item === undefined ||
+            response.Item.photos === undefined ||
+            response.Item.userId != params.userId) {
+            throw new Error('There is no photo or user does not have an access')
+        }
+        return response.Item.photos as PhotoEntry[]
+    }
+
+    async getPhoto(params: ReviewKeyParams, photoParams: PhotoEntry): Promise<PhotoEntry | {}> {
+        const response = await this.documentClient
+            .get({
+                TableName: this.props.reviewTable,
+                Key: {
+                    id: params.id,
+                },
+            }).promise()
+        if (response.Item && response.Item.photos &&
+            response.Item.userId == params.userId) {
+            const photo = response.Item.photos.find(
+                (item: PhotoEntry) => item.photoId === photoParams.photoId)
+            if (!photo)
+                return {}
+            return photo
+        }
+        return {}
+    }
+
+    async addPhoto(params: ReviewKeyParams, photoParams: PhotoEntry): Promise<PhotoEntry> {
+        const photoId = uuidv4()
+        const newPhoto = {
+            photoId: photoId,
+            bucket: this.props.bucket,
+            key: `${params.id}/photos/${photoId}`,
+            type: photoParams.type,
+            identityId: photoParams.identityId
+        }
+        const response = await this.documentClient
+            .update({
+                TableName: this.props.reviewTable,
+                Key: {
+                    id: params.id,
+                },
+                ConditionExpression: 'userId = :userId',
+                UpdateExpression: 'set photos=list_append(if_not_exists(photos, :empty_list), :newPhotos)',
+                ExpressionAttributeValues : {
+                    ':userId': params.userId,
+                    ':empty_list': [],
+                    ':newPhotos': [newPhoto]
+                }
+            }).promise()
+
+        return newPhoto
+    }
+
+    async deletePhoto(params: ReviewKeyParams, photoParams: PhotoEntry) {
+        const response = await this.documentClient
+            .get({
+                TableName: this.props.reviewTable,
+                Key: {
+                    id: params.id,
+                },
+            }).promise()
+        const profile = response.Item
+        if (profile && profile.photos && profile.userId === params.userId) {
+            const indexToRemove = profile.photos
+                .findIndex((item: PhotoEntry) => item.photoId != photoParams.photoId)
+
+            await this.documentClient
+                .update({
+                    TableName: this.props.reviewTable,
+                    Key: {
+                        id: params.id,
+                    },
+                    ConditionExpression: 'userId = :userId',
+                    UpdateExpression: `REMOVE photos[${indexToRemove}]`,
+                    ExpressionAttributeValues : {
+                        ':userId': params.userId,
+                    }
+                }).promise()
         }
     }
 

@@ -22,9 +22,9 @@ export class ReviewStatefulStack extends Stack {
     }
 
     private initializeSuffix() {
-        const shortStackId = Fn.select(2, Fn.split('/', this.stackId));
-        const Suffix = Fn.select(4, Fn.split('-', shortStackId));
-        this.suffix = Suffix;
+        const shortStackId = Fn.select(2, Fn.split('/', this.stackId))
+        const Suffix = Fn.select(4, Fn.split('-', shortStackId))
+        this.suffix = Suffix
     }
 
     private initializeDynamoDBTable() {
@@ -70,9 +70,9 @@ export class ReviewStatefulStack extends Stack {
 
     private initializeBucketPolicies() {
         const authenticatedRole = Role.fromRoleArn(
-            this, 'authenticatedRole', config.authenticatedRoleArn)
+            this, `authenticatedRoleReview`, config.authenticatedRoleArn)
         const adminRole = Role.fromRoleArn(
-            this, 'adminRole', config.adminRoleArn)
+            this, `adminRoleReview`, config.adminRoleArn)
         const uploadBucketPolicy = new PolicyStatement({
             effect: Effect.ALLOW,
             actions: [

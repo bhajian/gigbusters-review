@@ -66,9 +66,9 @@ export class ReviewableStatefulStack extends Stack {
 
     private initializeBucketPolicies() {
         const authenticatedRole = Role.fromRoleArn(
-            this, 'authenticatedRole', config.authenticatedRoleArn)
+            this, `authenticatedRoleReviewable`, config.authenticatedRoleArn)
         const adminRole = Role.fromRoleArn(
-            this, 'adminRole', config.adminRoleArn)
+            this, `adminRoleReviewable`, config.adminRoleArn)
         const uploadBucketPolicy = new PolicyStatement({
             effect: Effect.ALLOW,
             actions: [

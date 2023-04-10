@@ -10,6 +10,7 @@ export interface ReviewEntity {
     reviewableId?: string
     reviewable: ReviewableEntity
     userId: string
+    createdByUserId: string
     review: string
     rating: number
     photos: [PhotoEntry]

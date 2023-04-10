@@ -164,7 +164,7 @@ export class ReviewService {
                 // Create a new reviewable
                 reviewable = {
                     ...params.reviewable,
-                    userId: params.userId,
+                    createdByUserId: params.userId,
                     createdDateTime: now.toISOString(),
                     cumulativeRating: params.rating,
                     numberOfReviews: 1,

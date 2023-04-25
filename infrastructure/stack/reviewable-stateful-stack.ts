@@ -8,51 +8,47 @@ import {Bucket, HttpMethods} from "aws-cdk-lib/aws-s3";
 import {Effect, PolicyStatement, Role} from "aws-cdk-lib/aws-iam";
 
 
-export class ReviewStatefulStack extends Stack {
+export class ReviewableStatefulStack extends Stack {
     public dynamodbTable: GenericDynamoTable
-    public reviewPhotoBucket: Bucket
+    public reviewablePhotoBucket: Bucket
     private suffix: string;
 
     constructor(scope: Construct, id: string, props?: cdk.StackProps) {
         super(scope, id, props);
         this.initializeSuffix()
         this.initializeDynamoDBTable()
-        this.initializeReviewPhotosBucket()
+        this.initializeReviewablePhotosBucket()
         this.initializeBucketPolicies()
     }
 
     private initializeSuffix() {
-        const shortStackId = Fn.select(2, Fn.split('/', this.stackId))
-        const Suffix = Fn.select(4, Fn.split('-', shortStackId))
-        this.suffix = Suffix
+        const shortStackId = Fn.select(2, Fn.split('/', this.stackId));
+        const Suffix = Fn.select(4, Fn.split('-', shortStackId));
+        this.suffix = Suffix;
     }
 
     private initializeDynamoDBTable() {
-        this.dynamodbTable = new GenericDynamoTable(this, 'ReviewDynamoDBTable', {
-            removalPolicy: RemovalPolicy.DESTROY,
-            tableName: `Review-${config.envName}-${this.suffix}`,
-            stream: StreamViewType.NEW_AND_OLD_IMAGES,
-            primaryKey: 'id',
-            keyType: AttributeType.STRING
-        })
+        this.dynamodbTable = new GenericDynamoTable(this,
+            'ReviewableDynamoDBTable', {
+                removalPolicy: RemovalPolicy.DESTROY,
+                tableName: `Reviewable-${config.envName}-${this.suffix}`,
+                stream: StreamViewType.NEW_AND_OLD_IMAGES,
+                primaryKey: 'uri',
+                keyType: AttributeType.STRING,
+                sortKeyName: 'type',
+                sortKeyType: AttributeType.STRING
+            })
         this.dynamodbTable.addSecondaryIndexes({
             indexName: 'userIdIndex',
             partitionKeyName: 'userId',
             partitionKeyType: AttributeType.STRING,
         })
-        this.dynamodbTable.addSecondaryIndexes({
-            indexName: 'reviewableIndex',
-            partitionKeyName: 'uri',
-            partitionKeyType: AttributeType.STRING,
-            sortKeyName: 'type',
-            sortKeyType: AttributeType.STRING,
-        })
     }
 
-    private initializeReviewPhotosBucket() {
-        this.reviewPhotoBucket = new Bucket(this, 'review-photos', {
+    private initializeReviewablePhotosBucket() {
+        this.reviewablePhotoBucket = new Bucket(this, 'reviewable-photos', {
             removalPolicy: RemovalPolicy.DESTROY,
-            bucketName: `review-photos-${config.envName}-${this.suffix}`,
+            bucketName: `reviewable-photos-${config.envName}-${this.suffix}`,
             cors: [{
                 allowedMethods: [
                     HttpMethods.HEAD,
@@ -63,16 +59,16 @@ export class ReviewStatefulStack extends Stack {
                 allowedHeaders: ['*']
             }]
         });
-        new CfnOutput(this, 'review-photos-bucket-name', {
-            value: this.reviewPhotoBucket.bucketName
+        new CfnOutput(this, 'reviewable-photos-bucket-name', {
+            value: this.reviewablePhotoBucket.bucketName
         })
     }
 
     private initializeBucketPolicies() {
         const authenticatedRole = Role.fromRoleArn(
-            this, `authenticatedRoleReview`, config.authenticatedRoleArn)
+            this, `authenticatedRoleReviewable`, config.authenticatedRoleArn)
         const adminRole = Role.fromRoleArn(
-            this, `adminRoleReview`, config.adminRoleArn)
+            this, `adminRoleReviewable`, config.adminRoleArn)
         const uploadBucketPolicy = new PolicyStatement({
             effect: Effect.ALLOW,
             actions: [
@@ -81,7 +77,7 @@ export class ReviewStatefulStack extends Stack {
                 's3:GetObject',
                 's3:DeleteObject'
             ],
-            resources: [this.reviewPhotoBucket.bucketArn + '/*']
+            resources: [this.reviewablePhotoBucket.bucketArn + '/*']
         })
         authenticatedRole.addToPrincipalPolicy(uploadBucketPolicy)
         adminRole.addToPrincipalPolicy(uploadBucketPolicy)

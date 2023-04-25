@@ -14,7 +14,7 @@ export function getEventHeaders(event: APIGatewayProxyEvent): any {
     return typeof event.headers == 'object' ? event.headers : JSON.parse(event.headers)
 }
 
-export function getSub(event: APIGatewayProxyEvent): string {
+export function getSub(event: APIGatewayProxyEvent): string | undefined {
     const headers = typeof event.headers == 'object' ? event.headers : JSON.parse(event.headers)
     let jwt = ''
     if(headers && headers['Authorization']){
@@ -27,8 +27,18 @@ export function getSub(event: APIGatewayProxyEvent): string {
         let decoded: any = jwt_decode(jwt)
         return decoded.sub ? decoded.sub : ''
     }
-    throw new Error('Authorization header is not empty or cannot be parsed.')
+    // throw new Error('Authorization header is empty or cannot be parsed.')
+    return undefined
 }
+
+export function b64Decode(str: string) : string {
+    return Buffer.from(str, 'base64').toString('binary')
+}
+
+export function b64Encode(str: string) : string {
+    return Buffer.from(str, 'binary').toString('base64')
+}
+
 
 export function  getPathParameter(event: APIGatewayProxyEvent, parameter: string): string {
     const value: string | undefined = event.pathParameters
@@ -46,9 +56,6 @@ export function getQueryString(event: APIGatewayProxyEvent,
     const {queryStringParameters} = event;
     if (queryStringParameters) {
         value = queryStringParameters[parameter!];
-    }
-    if (!value) {
-        throw new ExternalError(400, `Path must contain path parameter ${parameter}.`)
     }
     return value
 }

@@ -1,4 +1,4 @@
-import {RemovalPolicy, Stack, StackProps} from "aws-cdk-lib";
+import {aws_dynamodb, RemovalPolicy, Stack, StackProps} from "aws-cdk-lib";
 import {AttributeType, StreamViewType, Table} from "aws-cdk-lib/aws-dynamodb";
 import {Effect, IGrantable, PolicyStatement} from "aws-cdk-lib/aws-iam";
 import {Construct} from "constructs";
@@ -18,8 +18,8 @@ export interface SecondaryIndexProp {
     indexName: string
     partitionKeyName: string
     partitionKeyType: AttributeType
-    sortKeyName: string
-    sortKeyType: AttributeType
+    sortKeyName?: string
+    sortKeyType?: AttributeType
 }
 
 export class GenericDynamoTable extends Construct {
@@ -33,6 +33,7 @@ export class GenericDynamoTable extends Construct {
 
         this.table = new Table(this, id, {
             removalPolicy: props.removalPolicy,
+            billingMode: aws_dynamodb.BillingMode.PAY_PER_REQUEST,
             partitionKey: {
                 name: this.props.primaryKey,
                 type: AttributeType.STRING

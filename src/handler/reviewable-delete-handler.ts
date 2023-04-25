@@ -5,14 +5,14 @@ import {
 } from 'aws-lambda';
 import {getEventBody, getSub} from "../lib/utils";
 import {Env} from "../lib/env";
-import {ReviewService} from "../service/review-service";
-import {ReviewEntity} from "../service/review-types";
+import {ReviewableService} from "../service/reviewable-service";
+import {ReviewableEntity} from "../service/reviewable-types";
 
-const reviewTable = Env.get('REVIEW_TABLE')
-const reviewableTable = Env.get('REVIEWABLE_TABLE')
-const service = new ReviewService({
-    reviewTable: reviewTable,
-    reviewableTable: reviewableTable
+const table = Env.get('TABLE')
+const bucket = Env.get('IMAGE_BUCKET')
+const service = new ReviewableService({
+    table: table,
+    bucket: bucket
 })
 
 export async function handler(event: APIGatewayProxyEvent, context: Context):
@@ -25,14 +25,18 @@ export async function handler(event: APIGatewayProxyEvent, context: Context):
             'Access-Control-Allow-Headers': '*',
             'Access-Control-Allow-Methods': '*'
         },
-        body: 'Hello From the Api!'
+        body: 'Hello From Todo Edit Api!'
     }
     try {
-        const item = getEventBody(event) as ReviewEntity;
+        const item = getEventBody(event) as ReviewableEntity;
         const sub = getSub(event)
-        item.userId = (sub ? sub : item.userId)
-        const res = await service.put(item)
-        result.body = JSON.stringify(res)
+        if(!sub){
+            throw new Error('Sub or userId is not passed through a token.')
+        }
+
+        item.userId = sub
+        // const res = await service.delete(item)
+        result.body = JSON.stringify({success: false})
     } catch (error) {
         result.statusCode = 500
         result.body = error.message

@@ -8,10 +8,12 @@ interface Env {
     rootDomain: string | undefined
     apiSubdomain: string | undefined
     userPoolArn: string | undefined
-    basePath: string | undefined
+    reviewApiBasePath: string | undefined
+    reviewableApiBasePath: string | undefined
     authenticatedRoleArn: string | undefined
     unauthenticatedRoleArn: string | undefined
     adminRoleArn: string | undefined
+    profileTableArn: string | undefined
 }
 
 interface AppConfig {
@@ -22,10 +24,12 @@ interface AppConfig {
     rootDomain: string
     apiSubdomain: string
     userPoolArn: string
-    basePath: string
+    reviewApiBasePath: string
+    reviewableApiBasePath: string
     authenticatedRoleArn: string
     unauthenticatedRoleArn: string
     adminRoleArn: string
+    profileTableArn: string
 }
 
 const getConfig = (): Env => {
@@ -37,10 +41,12 @@ const getConfig = (): Env => {
         rootDomain: configFile.rootDomain,
         apiSubdomain: configFile.apiSubdomain,
         userPoolArn: configFile.userPoolArn,
-        basePath: configFile.basePath,
+        reviewApiBasePath: configFile.reviewApiBasePath,
+        reviewableApiBasePath: configFile.reviewableApiBasePath,
         authenticatedRoleArn: configFile.authenticatedRoleArn,
         unauthenticatedRoleArn: configFile.unauthenticatedRoleArn,
         adminRoleArn: configFile.adminRoleArn,
+        profileTableArn: configFile.profileTableArn,
     }
 };
 

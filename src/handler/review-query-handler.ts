@@ -9,9 +9,11 @@ import {getQueryString, getSub} from "../lib/utils";
 
 const reviewTable = Env.get('REVIEW_TABLE')
 const reviewableTable = Env.get('REVIEWABLE_TABLE')
+const profileTable = Env.get('PROFILE_TABLE')
 const service = new ReviewService({
     reviewTable: reviewTable,
-    reviewableTable: reviewableTable
+    reviewableTable: reviewableTable,
+    profileTable: profileTable
 })
 
 export async function handler(event: APIGatewayProxyEvent, context: Context):

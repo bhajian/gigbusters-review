@@ -9,6 +9,7 @@ import {PhotoEntry} from "./reviewable-types";
 interface ReviewServiceProps{
     reviewTable: string
     reviewableTable: string
+    profileTable?: string
     bucket?: string
 }
 
@@ -35,7 +36,7 @@ export class ReviewService {
         return response.Items as ReviewEntity[]
     }
 
-    async query(params: any): Promise<ReviewEntity[]> {
+    async query(params: any): Promise<any> {
         const response = await this.documentClient
             .query({
                 TableName: this.props.reviewTable,
@@ -48,13 +49,15 @@ export class ReviewService {
                     ':uri' : params.uri,
                     ':type' : params.type,
                 },
-                Limit: params.Limit,
+                Limit: params.limit,
                 ExclusiveStartKey: params.lastEvaluatedKey
             }).promise()
         if (response.Items === undefined) {
             return [] as ReviewEntity[]
         }
-        return response.Items as ReviewEntity[]
+        const reviews = response.Items
+        const complexReviews = this.mergeReviewables(reviews)
+        return complexReviews
     }
 
     async get(params: ReviewKeyParams): Promise<ReviewEntity> {
@@ -278,6 +281,66 @@ export class ReviewService {
                     }
                 }).promise()
         }
+    }
+
+    async mergeReviewables(reviews: any): Promise<any[]> {
+        let userIds = []
+        let reviewablesMap = new Map<string, any>()
+        if (reviews) {
+            for (let i = 0; i < reviews.length; i++) {
+                const userId = reviews[i].userId
+                if (userId && !reviewablesMap.has(userId)) {
+                    userIds.push({ userId: reviews[i].userId })
+                    reviewablesMap.set(userId, reviews[i])
+                }
+            }
+        }
+        const profiles = await this.batchGetProfiles(userIds)
+        const complexReviews : any[] = []
+
+        for (let i = 0; i < reviews.length; i++) {
+            const profile = profiles.get(reviews[i].userId)
+            complexReviews.push({
+                ...reviews[i],
+                profile: {
+                    name: (profile && profile.name ? profile.name : ''),
+                    location: (profile && profile.location ? profile.location : ''),
+                    email: profile?.email.email,
+                    phone: profile?.phone.phone,
+                    profilePhoto: ( profile && profile.photos ?
+                        profile.photos[0]: undefined)
+                }
+            })
+        }
+        return complexReviews as any[]
+    }
+
+    async batchGetProfiles(userIds: any): Promise<any> {
+        const requestItems: any = {}
+        let profiles = new Map<string, any>()
+        if (!userIds || userIds.length === 0 ){
+            return profiles
+        }
+
+        if(!this.props.profileTable){
+            throw new Error('Profile Table is not provided as an environment variable.')
+        }
+
+        requestItems[this.props.profileTable] = {
+            Keys: userIds
+        }
+        const userResponse = await this.documentClient
+            .batchGet({
+                RequestItems: requestItems
+            }).promise()
+        let rawProfiles: any = []
+        if(userResponse && userResponse.Responses && userResponse.Responses[this.props.profileTable]){
+            rawProfiles = userResponse.Responses[this.props.profileTable]
+            for(let i=0; i< rawProfiles.length; i++){
+                profiles.set(rawProfiles[i].userId, rawProfiles[i])
+            }
+        }
+        return profiles
     }
 
 }

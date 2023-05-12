@@ -88,7 +88,8 @@ export class ReviewableApis extends GenericApi {
             resource: props.rootResource,
             environment: {
                 TABLE: props.table.tableName,
-                IMAGE_BUCKET: props.bucket.bucketName
+                IMAGE_BUCKET: props.bucket.bucketName,
+                PROFILE_TABLE: profileITable.tableName,
             },
             validateRequestBody: false,
             authorizationType: AuthorizationType.COGNITO,
@@ -117,7 +118,8 @@ export class ReviewableApis extends GenericApi {
             resource: props.uriResource,
             environment: {
                 TABLE: props.table.tableName,
-                IMAGE_BUCKET: props.bucket.bucketName
+                IMAGE_BUCKET: props.bucket.bucketName,
+                PROFILE_TABLE: profileITable.tableName,
             },
             validateRequestBody: false,
             authorizationType: AuthorizationType.COGNITO,
@@ -176,6 +178,8 @@ export class ReviewableApis extends GenericApi {
         props.table.grantFullAccess(this.deleteApi.grantPrincipal)
 
         profileITable.grantFullAccess(this.queryApi.grantPrincipal)
+        profileITable.grantFullAccess(this.listApi.grantPrincipal)
+        profileITable.grantFullAccess(this.getApi.grantPrincipal)
     }
 
     public getProfileTable() : ITable {

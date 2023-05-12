@@ -36,44 +36,27 @@ export class ReviewableService {
 
     async query(params: any): Promise<ReviewableEntity[]> {
         try{
-            const {userId, uri, location, category, type} = params
-            if(userId){
-                const response = await this.documentClient
-                    .query({
-                        TableName: this.props.table,
-                        IndexName: 'userIdIndex',
-                        KeyConditionExpression: 'userId = :userId',
-                        ExpressionAttributeValues : {
-                            ':userId' : userId,
-                        },
-                        Limit: params.Limit,
-                        ExclusiveStartKey: params.lastEvaluatedKey
-                    }).promise()
-                if (response.Items === undefined) {
-                    return [] as ReviewableEntity[]
-                }
-                const reviewables = response.Items
-                const complexReviewables = this.mergeReviewables(reviewables)
-                return complexReviewables
+            const {location, category, type} = params
+            const response = await this.documentClient
+                .scan({
+                    TableName: this.props.table,
+                    FilterExpression: '#type = :type',
+                    ExpressionAttributeNames: {
+                        '#type': 'type'
+                    },
+                    ExpressionAttributeValues: {
+                        ':type': params.type
+                    }
+                }).promise()
+            if (response.Items === undefined) {
+                return [] as ReviewableEntity[]
             }
-            if(type){ // FIX me : what if combination of query parameters are requested
-                const response = await this.documentClient
-                    .scan({
-                        TableName: this.props.table,
-                        FilterExpression: '#type = :type',
-                        ExpressionAttributeNames: {
-                            '#type': 'type'
-                        },
-                        ExpressionAttributeValues : {
-                            ':type' : type,
-                        }
-                    }).promise()
-                if (response.Items === undefined) {
-                    return [] as ReviewableEntity[]
-                }
-                const reviewables = response.Items
-                const complexReviewables = this.mergeReviewables(reviewables)
-                return complexReviewables
+            const reviewables = response.Items
+            const complexReviewables = this.mergeReviewables(reviewables)
+            return complexReviewables
+
+            if(type){
+                // FIX me : what if combination of query parameters are requested
             }
             return [] as ReviewableEntity[]
             if(location){
@@ -87,36 +70,11 @@ export class ReviewableService {
         }
     }
 
-    async mergeReviewables(reviewables: any): Promise<any[]> {
-        let userIds = []
-        let reviewablesMap = new Map<string, any>()
-        if (reviewables) {
-            for (let i = 0; i < reviewables.length; i++) {
-                const userId = reviewables[i].userId
-                if(reviewablesMap.has(userId)){
-                } else {
-                    userIds.push({userId: reviewables[i].userId})
-                    reviewablesMap.set(userId, reviewables[i])
-                }
-            }
-        }
-        const profiles = await this.batchGetProfiles(userIds)
-        const complexReviewables : any[] = []
-
-        for (let i = 0; i < reviewables.length; i++) {
-            const profile = profiles.get(reviewables[i].userId)
-            complexReviewables.push({
-                ...reviewables[i],
-                name: (profile && profile.name ? profile.name : ''),
-                location: (profile && profile.location ? profile.location : ''),
-                profilePhoto: ( profile && profile.photos ?
-                    profile.photos[0]: undefined)
-            })
-        }
-        return complexReviewables as any[]
-    }
-
     async get(params: ReviewableKeyParams): Promise<ReviewableEntity> {
+        if(!this.props.profileTable){
+            throw new Error('Profile Table is not passed.')
+        }
+
         const response = await this.documentClient
             .get({
                 TableName: this.props.table,
@@ -125,7 +83,19 @@ export class ReviewableService {
                     type: params.type
                 },
             }).promise()
-        return response.Item as ReviewableEntity
+        const revewable = response?.Item
+        if(revewable?.userId){
+            const profileResponse = await this.documentClient
+                .get({
+                    TableName: this.props.profileTable,
+                    Key: {
+                        userId: revewable?.userId
+                    },
+                }).promise()
+            revewable.profile = profileResponse.Item
+        }
+
+        return revewable as ReviewableEntity
     }
 
     async create(params: ReviewableEntity): Promise<ReviewableEntity> {
@@ -300,10 +270,42 @@ export class ReviewableService {
         }
     }
 
+    async mergeReviewables(reviewables: any): Promise<any[]> {
+        let userIds = []
+        let reviewablesMap = new Map<string, any>()
+        if (reviewables) {
+            for (let i = 0; i < reviewables.length; i++) {
+                const userId = reviewables[i].userId
+                if (userId && !reviewablesMap.has(userId)) {
+                    userIds.push({ userId: reviewables[i].userId })
+                    reviewablesMap.set(userId, reviewables[i])
+                }
+            }
+        }
+        const profiles = await this.batchGetProfiles(userIds)
+        const complexReviewables : any[] = []
+
+        for (let i = 0; i < reviewables.length; i++) {
+            const profile = profiles.get(reviewables[i].userId)
+            complexReviewables.push({
+                ...reviewables[i],
+                profile: {
+                    name: (profile && profile.name ? profile.name : ''),
+                    location: (profile && profile.location ? profile.location : ''),
+                    email: profile?.email.email,
+                    phone: profile?.phone.phone,
+                    profilePhoto: ( profile && profile.photos ?
+                        profile.photos[0]: undefined)
+                }
+            })
+        }
+        return complexReviewables as any[]
+    }
+
     async batchGetProfiles(userIds: any): Promise<any> {
         const requestItems: any = {}
         let profiles = new Map<string, any>()
-        if (userIds.length === 0 ){
+        if (!userIds || userIds.length === 0 ){
             return profiles
         }
 

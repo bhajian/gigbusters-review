@@ -20,6 +20,7 @@ export interface ReviewableEntity {
     uri: string
     type: string
     userId: string
+    profile: any
     createdDateTime?: string
     profileUserId?: string
     reviewableStatus: string

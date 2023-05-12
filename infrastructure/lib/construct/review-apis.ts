@@ -94,6 +94,8 @@ export class ReviewApis extends GenericApi {
     }
 
     private initializeReviewApis(props: ReviewApiProps){
+        const profileITable = this.getProfileTable()
+
         this.listApi = this.addMethod({
             functionName: 'review-list',
             handlerName: 'review-list-handler.ts',
@@ -101,7 +103,8 @@ export class ReviewApis extends GenericApi {
             resource: props.rootResource,
             environment: {
                 REVIEW_TABLE: props.reviewTable.tableName,
-                REVIEWABLE_TABLE: props.reviewableTable.tableName
+                REVIEWABLE_TABLE: props.reviewableTable.tableName,
+                PROFILE_TABLE: profileITable.tableName,
             },
             validateRequestBody: false,
             authorizationType: AuthorizationType.COGNITO,
@@ -115,7 +118,8 @@ export class ReviewApis extends GenericApi {
             resource: props.queryResource,
             environment: {
                 REVIEW_TABLE: props.reviewTable.tableName,
-                REVIEWABLE_TABLE: props.reviewableTable.tableName
+                REVIEWABLE_TABLE: props.reviewableTable.tableName,
+                PROFILE_TABLE: profileITable.tableName,
             },
             validateRequestBody: false,
             authorizationType: AuthorizationType.COGNITO,
@@ -129,7 +133,8 @@ export class ReviewApis extends GenericApi {
             resource: props.idResource,
             environment: {
                 REVIEW_TABLE: props.reviewTable.tableName,
-                REVIEWABLE_TABLE: props.reviewableTable.tableName
+                REVIEWABLE_TABLE: props.reviewableTable.tableName,
+                PROFILE_TABLE: profileITable.tableName,
             },
             validateRequestBody: false,
             authorizationType: AuthorizationType.COGNITO,
@@ -273,6 +278,10 @@ export class ReviewApis extends GenericApi {
         props.reviewableTable.grantFullAccess(this.listPhotosApi.grantPrincipal)
         props.reviewTable.grantFullAccess(this.getPhotosApi.grantPrincipal)
         props.reviewableTable.grantFullAccess(this.getPhotosApi.grantPrincipal)
+
+        profileITable.grantFullAccess(this.queryApi.grantPrincipal)
+        profileITable.grantFullAccess(this.listApi.grantPrincipal)
+        profileITable.grantFullAccess(this.getApi.grantPrincipal)
     }
 
     protected createAuthorizer(props: AuthorizerProps): CognitoUserPoolsAuthorizer{
@@ -287,6 +296,10 @@ export class ReviewApis extends GenericApi {
             });
         authorizer._attachToApi(this.api)
         return authorizer
+    }
+
+    public getProfileTable() : ITable {
+        return Table.fromTableArn(this, 'profileTableId', config.profileTableArn)
     }
 
 }

@@ -1,5 +1,5 @@
-
-const configFile = require('./dev.json')
+const env = process.env.DEPLOYMENT_ENV
+const configFile = require(`./${env}.json`)
 interface Env {
     envName: string | undefined
     account: string | undefined

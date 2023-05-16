@@ -5,11 +5,12 @@ import {ReviewApiStack} from '../stack/review-api-stack';
 import {ReviewStatefulStack} from "../stack/review-stateful-stack";
 import {ReviewableApiStack} from "../stack/reviewable-api-stack";
 import {ReviewableStatefulStack} from "../stack/reviewable-stateful-stack";
+import config from "../config/config";
 
 const app = new cdk.App();
 
 const reviewableStatefulStack = new ReviewableStatefulStack(
-    app, 'ReviewableStatefulStack', {
+    app, `ReviewableStatefulStack-${config.envName}`, {
         env: {
             account: process.env.CDK_DEFAULT_ACCOUNT,
             region: process.env.CDK_DEFAULT_REGION
@@ -17,14 +18,14 @@ const reviewableStatefulStack = new ReviewableStatefulStack(
     })
 
 const reviewStatefulStack = new ReviewStatefulStack(
-    app, 'ReviewStatefulStack', {
+    app, `ReviewStatefulStack-${config.envName}`, {
         env: {
             account: process.env.CDK_DEFAULT_ACCOUNT,
             region: process.env.CDK_DEFAULT_REGION
         }
     })
 
-new ReviewableApiStack(app, 'ReviewableApiStack', {
+new ReviewableApiStack(app, `ReviewableApiStack-${config.envName}`, {
     reviewApiStatefulStack: reviewStatefulStack,
     reviewableApiStatefulStack: reviewableStatefulStack,
 }, {
@@ -34,7 +35,7 @@ new ReviewableApiStack(app, 'ReviewableApiStack', {
     }
 })
 
-new ReviewApiStack(app, 'ReviewApiStack', {
+new ReviewApiStack(app, `ReviewApiStack-${config.envName}`, {
     reviewApiStatefulStack: reviewStatefulStack,
     reviewableApiStatefulStack: reviewableStatefulStack
 }, {

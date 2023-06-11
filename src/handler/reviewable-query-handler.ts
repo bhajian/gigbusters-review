@@ -48,7 +48,7 @@ export async function handler(event: APIGatewayProxyEvent, context: Context):
             distance: distanceParam,
             longitude: longitudeParam,
             latitude: latitudeParam,
-            limit: (limit ? limit : 50),
+            limit: (Number(limit) < 100 ? limit : 90),
             lastEvaluatedKey: lastEvaluatedKey
         })
 

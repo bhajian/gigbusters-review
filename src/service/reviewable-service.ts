@@ -46,7 +46,9 @@ export class ReviewableService {
                     },
                     ExpressionAttributeValues: {
                         ':type': params.type
-                    }
+                    },
+                    Limit: params.limit,
+                    ExclusiveStartKey: params.lastEvaluatedKey
                 }).promise()
             if (response.Items === undefined) {
                 return [] as ReviewableEntity[]
@@ -292,8 +294,9 @@ export class ReviewableService {
                 profile: {
                     name: (profile && profile.name ? profile.name : ''),
                     location: (profile && profile.location ? profile.location : ''),
-                    email: profile?.email.email,
-                    phone: profile?.phone.phone,
+                    email: profile?.email?.email,
+                    phone: profile?.phone?.phone,
+                    bio: (profile?.bio ? profile?.bio: ''),
                     profilePhoto: ( profile && profile.photos ?
                         profile.photos[0]: undefined)
                 }
